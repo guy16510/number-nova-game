@@ -3,7 +3,7 @@ name: CI
 on:
   workflow_dispatch:
   schedule:
-    - cron: '*/5 * * * *'
+    - cron: '17 6 * * *'
   push:
     branches: ['main', 'feature/**']
   pull_request:
@@ -21,7 +21,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event_name == 'schedule' && 'feature/mvp' || github.ref }}
+          ref: ${{ github.event_name == 'schedule' && 'main' || github.ref }}
 
       - name: Use Node 20.19
         uses: actions/setup-node@v4
@@ -51,11 +51,17 @@ jobs:
         continue-on-error: true
         run: npm test
 
-      - name: Validate Metro production bundle
-        id: metro_export
+      - name: Validate Android production bundle
+        id: android_export
         if: steps.install.outcome == 'success'
         continue-on-error: true
         run: npm run export:android
+
+      - name: Validate iOS production bundle
+        id: ios_export
+        if: steps.install.outcome == 'success'
+        continue-on-error: true
+        run: npm run export:ios
 
       - name: Publish validation status
         if: always()
@@ -65,7 +71,8 @@ jobs:
           EXPO_CHECK: ${{ steps.expo_check.outcome }}
           TYPECHECK: ${{ steps.typecheck.outcome }}
           TESTS: ${{ steps.tests.outcome }}
-          METRO_EXPORT: ${{ steps.metro_export.outcome }}
+          ANDROID_EXPORT: ${{ steps.android_export.outcome }}
+          IOS_EXPORT: ${{ steps.ios_export.outcome }}
         with:
           script: |
             const { execSync } = require('node:child_process');
@@ -75,7 +82,8 @@ jobs:
               expo: process.env.EXPO_CHECK,
               typecheck: process.env.TYPECHECK,
               tests: process.env.TESTS,
-              metro: process.env.METRO_EXPORT,
+              android: process.env.ANDROID_EXPORT,
+              ios: process.env.IOS_EXPORT,
             };
             const failed = Object.entries(outcomes)
               .filter(([, value]) => value !== 'success')
@@ -93,5 +101,5 @@ jobs:
             });
 
       - name: Fail workflow when validation failed
-        if: always() && (steps.install.outcome != 'success' || steps.expo_check.outcome != 'success' || steps.typecheck.outcome != 'success' || steps.tests.outcome != 'success' || steps.metro_export.outcome != 'success')
+        if: always() && (steps.install.outcome != 'success' || steps.expo_check.outcome != 'success' || steps.typecheck.outcome != 'success' || steps.tests.outcome != 'success' || steps.android_export.outcome != 'success' || steps.ios_export.outcome != 'success')
         run: exit 1
