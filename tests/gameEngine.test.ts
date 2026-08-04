@@ -78,3 +78,25 @@ test('power ups have limited charges', () => {
   advance(engine, 6);
   assert.equal(engine.useShield(), false);
 });
+
+
+test('respawns an answer wave when the correct target leaves the world', () => {
+  const seed = 3;
+  const engine = new GameEngine({ seed });
+  engine.start();
+
+  for (let frame = 1; frame <= 400; frame += 1) {
+    engine.update(1 / 60, {
+      x: Math.sin((frame + seed * 17) * 0.041),
+      y: Math.cos((frame + seed * 11) * 0.029) * 0.8,
+    });
+    const answers = engine.snapshot().entities.filter((entity) => entity.kind === 'answer');
+    if (answers.length > 0) {
+      assert.equal(
+        answers.filter((entity) => entity.correct === true).length,
+        1,
+        `frame ${frame} has no reachable correct answer`,
+      );
+    }
+  }
+});

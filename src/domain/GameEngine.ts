@@ -343,8 +343,10 @@ export class GameEngine {
     if (this.challengeDelaySeconds > 0 || this.currentDefinition.kind === 'collect') {
       return;
     }
-    const hasAnswers = this.entities.some((entity) => entity.kind === 'answer');
-    if (!hasAnswers) {
+    const hasCorrectAnswer = this.entities.some(
+      (entity) => entity.kind === 'answer' && entity.correct === true,
+    );
+    if (!hasCorrectAnswer) {
       this.spawnCurrentChallenge();
     }
   }
