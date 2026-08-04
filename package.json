@@ -10,7 +10,7 @@
     "ios": "expo run:ios",
     "typecheck": "tsc --noEmit",
     "test": "tsx --test tests/*.test.ts",
-    "simulate": "tsx scripts/simulate-game.ts --seeds 200 --frames 900 --solver-seeds 50 --report artifacts/simulation-report.json",
+    "simulate": "tsx scripts/simulate-game.ts --seeds 300 --frames 900 --solver-seeds 75 --report artifacts/simulation-report.json",
     "validate": "npm run typecheck && npm test && npm run simulate",
     "export:android": "expo export --platform android --output-dir dist/android",
     "export:ios": "expo export --platform ios --output-dir dist/ios"
