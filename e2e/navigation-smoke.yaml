@@ -1,0 +1,30 @@
+appId: com.guy16510.numbernova
+---
+- launchApp:
+    clearState: true
+- assertVisible: "START MISSION"
+- takeScreenshot: artifacts/render/nav-menu
+- longPressOn: "Hold for Parents"
+- assertVisible: "Parent dashboard"
+- assertVisible: "DONE"
+- takeScreenshot: artifacts/render/nav-parents
+- tapOn: "DONE"
+- assertVisible: "START MISSION"
+- tapOn: "START MISSION"
+- assertVisible: "CALIBRATE & LAUNCH"
+- tapOn: "Use touch controls instead"
+- assertVisible: "SHIELD"
+- assertVisible: "MAGNET"
+- tapOn: "Pause"
+- assertVisible: "Mission paused"
+- assertVisible: "RESUME"
+- takeScreenshot: artifacts/render/nav-paused
+- tapOn: "RESUME"
+- assertVisible: "SHIELD"
+- assertVisible: "MAGNET"
+- takeScreenshot: artifacts/render/nav-resumed
+- tapOn: "Pause"
+- assertVisible: "Mission paused"
+- tapOn: "Exit mission"
+- assertVisible: "START MISSION"
+- takeScreenshot: artifacts/render/nav-exited
