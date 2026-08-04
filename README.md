@@ -75,7 +75,9 @@ npm test
 npm run export:android
 ```
 
-GitHub Actions runs type checking, deterministic engine tests, motion-filter tests, and an Android Metro export on every push and pull request.
+GitHub Actions validates Expo SDK 54 dependency compatibility, strict TypeScript, 13 deterministic game and motion tests, and an Android production Metro export on every push and pull request.
+
+The automated suite covers challenge generation, answer selection, mission progression, collection behavior, limited power-up charges, boss completion, motion calibration, input normalization, and screen-relative landscape tilt mapping.
 
 ## EAS setup
 
