@@ -8,13 +8,14 @@ appId: com.guy16510.numbernova
 - assertVisible: "CALIBRATE & LAUNCH"
 - takeScreenshot: artifacts/render/calibration
 - tapOn: "Use touch controls instead"
-- assertVisible: "MISSION 1/6"
+- assertVisible: "SHIELD"
+- assertVisible: "MAGNET"
 - takeScreenshot: artifacts/render/gameplay-start
 - swipe:
     start: 50%, 75%
     end: 25%, 45%
-    duration: 1200
+    duration: 900
 - takeScreenshot: artifacts/render/gameplay-steering
 - tapOn: "SHIELD"
-- assertVisible: "MISSION 1/6"
+- assertVisible: "SHIELD"
 - takeScreenshot: artifacts/render/gameplay-shield
