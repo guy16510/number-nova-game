@@ -1,0 +1,82 @@
+name: Apply Correct Target Fix
+
+on:
+  push:
+    branches: ['main']
+    paths:
+      - '.github/workflows/apply-correct-target-fix.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  apply-fix:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Patch engine and add regression coverage
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          engine_path = Path('src/domain/GameEngine.ts')
+          engine = engine_path.read_text(encoding='utf-8')
+          old = """    const hasAnswers = this.entities.some((entity) => entity.kind === 'answer');
+              if (!hasAnswers) {
+                this.spawnCurrentChallenge();
+              }
+          """
+          new = """    const hasCorrectAnswer = this.entities.some(
+                (entity) => entity.kind === 'answer' && entity.correct === true,
+              );
+              if (!hasCorrectAnswer) {
+                this.spawnCurrentChallenge();
+              }
+          """
+          if old not in engine:
+              raise SystemExit('Expected ensureActiveTargets block was not found')
+          engine_path.write_text(engine.replace(old, new, 1), encoding='utf-8')
+
+          test_path = Path('tests/gameEngine.test.ts')
+          tests = test_path.read_text(encoding='utf-8')
+          marker = "test('respawns an answer wave when the correct target leaves the world'"
+          if marker not in tests:
+              tests += """
+
+          test('respawns an answer wave when the correct target leaves the world', () => {
+            const seed = 3;
+            const engine = new GameEngine({ seed });
+            engine.start();
+
+            for (let frame = 1; frame <= 400; frame += 1) {
+              engine.update(1 / 60, {
+                x: Math.sin((frame + seed * 17) * 0.041),
+                y: Math.cos((frame + seed * 11) * 0.029) * 0.8,
+              });
+              const answers = engine.snapshot().entities.filter((entity) => entity.kind === 'answer');
+              if (answers.length > 0) {
+                assert.equal(
+                  answers.filter((entity) => entity.correct === true).length,
+                  1,
+                  `frame ${frame} has no reachable correct answer`,
+                );
+              }
+            }
+          });
+          """
+              test_path.write_text(tests, encoding='utf-8')
+          PY
+
+      - name: Commit fix
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/domain/GameEngine.ts tests/gameEngine.test.ts
+          git diff --cached --check
+          git commit -m 'fix: respawn challenges when the correct target is lost'
+          git push origin HEAD:main
