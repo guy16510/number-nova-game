@@ -1,4 +1,4 @@
-import { createAudioPlayer, setAudioModeAsync, type AudioPlayer } from 'expo-audio';
+import { Audio } from 'expo-av';
 import * as Haptics from 'expo-haptics';
 import * as Speech from 'expo-speech';
 
@@ -12,14 +12,13 @@ export interface FeedbackPort {
 }
 
 export class ExpoFeedbackService implements FeedbackPort {
-  private readonly laserPlayer = createAudioPlayer(require('../../assets/sfx/laser.wav'));
-  private readonly successPlayer = createAudioPlayer(require('../../assets/sfx/correct.wav'));
+  private laserSound: Audio.Sound | null = null;
+  private successSound: Audio.Sound | null = null;
+  private readonly ready: Promise<void>;
+  private stopped = false;
 
   public constructor() {
-    void setAudioModeAsync({
-      playsInSilentMode: true,
-      interruptionMode: 'mixWithOthers',
-    }).catch(() => undefined);
+    this.ready = this.prepareAudio();
   }
 
   public speak(text: string): void {
@@ -35,14 +34,14 @@ export class ExpoFeedbackService implements FeedbackPort {
   public async laser(): Promise<void> {
     await Promise.all([
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light),
-      this.replay(this.laserPlayer),
+      this.play(() => this.laserSound),
     ]);
   }
 
   public async correct(): Promise<void> {
     await Promise.all([
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success),
-      this.replay(this.successPlayer),
+      this.play(() => this.successSound),
     ]);
   }
 
@@ -53,31 +52,62 @@ export class ExpoFeedbackService implements FeedbackPort {
   public async powerUp(): Promise<void> {
     await Promise.all([
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium),
-      this.replay(this.successPlayer),
+      this.play(() => this.successSound),
     ]);
   }
 
   public stop(): void {
     Speech.stop();
-    this.release(this.laserPlayer);
-    this.release(this.successPlayer);
+    this.stopped = true;
+    void this.ready.finally(async () => {
+      const sounds = [this.laserSound, this.successSound].filter(
+        (sound): sound is Audio.Sound => sound !== null,
+      );
+      this.laserSound = null;
+      this.successSound = null;
+      await Promise.allSettled(sounds.map((sound) => sound.unloadAsync()));
+    });
   }
 
-  private async replay(player: AudioPlayer): Promise<void> {
+  private async prepareAudio(): Promise<void> {
     try {
-      await player.seekTo(0);
-      player.play();
+      await Audio.setAudioModeAsync({
+        playsInSilentModeIOS: true,
+        staysActiveInBackground: false,
+        shouldDuckAndroid: false,
+      });
+      const [laser, success] = await Promise.all([
+        Audio.Sound.createAsync(require('../../assets/sfx/laser.wav'), {
+          shouldPlay: false,
+          volume: 1,
+        }),
+        Audio.Sound.createAsync(require('../../assets/sfx/correct.wav'), {
+          shouldPlay: false,
+          volume: 0.9,
+        }),
+      ]);
+
+      if (this.stopped) {
+        await Promise.allSettled([
+          laser.sound.unloadAsync(),
+          success.sound.unloadAsync(),
+        ]);
+        return;
+      }
+
+      this.laserSound = laser.sound;
+      this.successSound = success.sound;
     } catch {
       // Audio feedback is non-critical and must never interrupt gameplay.
     }
   }
 
-  private release(player: AudioPlayer): void {
+  private async play(getSound: () => Audio.Sound | null): Promise<void> {
     try {
-      player.pause();
-      player.release();
+      await this.ready;
+      await getSound()?.replayAsync();
     } catch {
-      // The native player may already be released during fast refresh.
+      // Keep gameplay running if audio is unavailable on a device.
     }
   }
 }
