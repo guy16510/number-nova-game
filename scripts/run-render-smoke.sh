@@ -5,13 +5,15 @@ APP_ID="com.guy16510.numbernova"
 ARTIFACT_DIR="artifacts"
 RENDER_DIR="${ARTIFACT_DIR}/render"
 LOG_DIR="${ARTIFACT_DIR}/logs"
+MAESTRO_OUTPUT_DIR="${ARTIFACT_DIR}/maestro-output"
 APK_PATH="${APK_PATH:-android/app/build/outputs/apk/release/app-release.apk}"
 
-mkdir -p "${RENDER_DIR}" "${LOG_DIR}"
+mkdir -p "${RENDER_DIR}" "${LOG_DIR}" "${MAESTRO_OUTPUT_DIR}"
 rm -f "${RENDER_DIR}"/*.png
+rm -rf "${MAESTRO_OUTPUT_DIR:?}"/*
 
 sync_screenshots() {
-  find "${ARTIFACT_DIR}/maestro-output" \
+  find "${MAESTRO_OUTPUT_DIR}" \
     -type f \
     -path '*/takeScreenshot/artifacts/render/*.png' \
     -print0 2>/dev/null |
@@ -30,6 +32,16 @@ collect_diagnostics() {
   adb shell uiautomator dump /sdcard/window.xml >/dev/null
   adb pull /sdcard/window.xml "${LOG_DIR}/window.xml" >/dev/null
   set -e
+}
+
+run_maestro_flow() {
+  local name="$1"
+  local flow="$2"
+  maestro test "${flow}" \
+    --format junit \
+    --output "${ARTIFACT_DIR}/maestro-${name}-results.xml" \
+    --test-output-dir "${MAESTRO_OUTPUT_DIR}/${name}"
+  sync_screenshots
 }
 
 if [[ ! -f "${APK_PATH}" ]]; then
@@ -54,16 +66,13 @@ trap collect_diagnostics EXIT
 export PATH="${HOME}/.maestro/bin:${PATH}"
 export MAESTRO_CLI_NO_ANALYTICS=1
 maestro --version
-maestro test e2e/render-smoke.yaml \
-  --format junit \
-  --output "${ARTIFACT_DIR}/maestro-results.xml" \
-  --test-output-dir "${ARTIFACT_DIR}/maestro-output"
+run_maestro_flow "render" "e2e/render-smoke.yaml"
+run_maestro_flow "navigation" "e2e/navigation-smoke.yaml"
 
-sync_screenshots
 mapfile -t screenshots < <(find "${RENDER_DIR}" -maxdepth 1 -type f -name '*.png' | sort)
-if [[ ${#screenshots[@]} -lt 4 ]]; then
-  echo "Expected at least four screenshots, found ${#screenshots[@]}" >&2
-  find "${ARTIFACT_DIR}" -maxdepth 7 -type f -print
+if [[ ${#screenshots[@]} -lt 9 ]]; then
+  echo "Expected at least nine screenshots across render and navigation flows, found ${#screenshots[@]}" >&2
+  find "${ARTIFACT_DIR}" -maxdepth 8 -type f -print
   exit 1
 fi
 
@@ -76,4 +85,4 @@ if grep -E "FATAL EXCEPTION|AndroidRuntime.*FATAL|ReactNativeJS.*(TypeError|Inva
 fi
 
 trap - EXIT
-echo "Render smoke validation passed with ${#screenshots[@]} screenshots."
+echo "Render smoke validation passed with ${#screenshots[@]} screenshots across two Maestro flows."
