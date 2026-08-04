@@ -52,7 +52,7 @@ jobs:
         run: npm test
 
       - name: Validate Metro production bundle
-        id: export
+        id: metro_export
         if: steps.install.outcome == 'success'
         continue-on-error: true
         run: npm run export:android
@@ -65,7 +65,7 @@ jobs:
           EXPO_CHECK: ${{ steps.expo_check.outcome }}
           TYPECHECK: ${{ steps.typecheck.outcome }}
           TESTS: ${{ steps.tests.outcome }}
-          EXPORT: ${{ steps.export.outcome }}
+          METRO_EXPORT: ${{ steps.metro_export.outcome }}
         with:
           script: |
             const { execSync } = require('node:child_process');
@@ -75,7 +75,7 @@ jobs:
               expo: process.env.EXPO_CHECK,
               typecheck: process.env.TYPECHECK,
               tests: process.env.TESTS,
-              export: process.env.EXPORT,
+              metro: process.env.METRO_EXPORT,
             };
             const failed = Object.entries(outcomes)
               .filter(([, value]) => value !== 'success')
@@ -93,5 +93,5 @@ jobs:
             });
 
       - name: Fail workflow when validation failed
-        if: always() && (steps.install.outcome != 'success' || steps.expo_check.outcome != 'success' || steps.typecheck.outcome != 'success' || steps.tests.outcome != 'success' || steps.export.outcome != 'success')
+        if: always() && (steps.install.outcome != 'success' || steps.expo_check.outcome != 'success' || steps.typecheck.outcome != 'success' || steps.tests.outcome != 'success' || steps.metro_export.outcome != 'success')
         run: exit 1
