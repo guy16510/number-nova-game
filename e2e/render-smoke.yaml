@@ -1,0 +1,20 @@
+appId: com.guy16510.numbernova
+---
+- launchApp:
+    clearState: true
+- assertVisible: "START MISSION"
+- takeScreenshot: artifacts/render/menu
+- tapOn: "START MISSION"
+- assertVisible: "CALIBRATE & LAUNCH"
+- takeScreenshot: artifacts/render/calibration
+- tapOn: "Use touch controls instead"
+- assertVisible: "MISSION 1/6"
+- takeScreenshot: artifacts/render/gameplay-start
+- swipe:
+    start: 50%, 75%
+    end: 25%, 45%
+    duration: 1200
+- takeScreenshot: artifacts/render/gameplay-steering
+- tapOn: "SHIELD"
+- assertVisible: "MISSION 1/6"
+- takeScreenshot: artifacts/render/gameplay-shield
