@@ -44,8 +44,6 @@ jobs:
     name: Android emulator render smoke
     runs-on: ubuntu-latest
     timeout-minutes: 55
-    env:
-      NODE_ENV: production
 
     steps:
       - name: Checkout
@@ -109,6 +107,8 @@ jobs:
         if: steps.prebuild.outcome == 'success'
         continue-on-error: true
         working-directory: android
+        env:
+          NODE_ENV: production
         run: ./gradlew :app:assembleRelease --no-daemon --stacktrace -PreactNativeArchitectures=x86_64
 
       - name: Locate release APK
