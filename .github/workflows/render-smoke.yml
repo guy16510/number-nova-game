@@ -12,8 +12,7 @@ on:
       - 'metro.config.js'
       - 'src/**'
       - 'e2e/**'
-      - 'scripts/run-render-smoke.sh'
-      - 'scripts/validate-render.py'
+      - 'scripts/**'
       - '.github/workflows/render-smoke.yml'
   pull_request:
     branches: ['main']
@@ -25,8 +24,7 @@ on:
       - 'metro.config.js'
       - 'src/**'
       - 'e2e/**'
-      - 'scripts/run-render-smoke.sh'
-      - 'scripts/validate-render.py'
+      - 'scripts/**'
       - '.github/workflows/render-smoke.yml'
   schedule:
     - cron: '41 7 * * 2'
