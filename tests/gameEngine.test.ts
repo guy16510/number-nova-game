@@ -49,6 +49,25 @@ test('correct answers advance into a boss and three boss hits complete the game'
   assert.ok(result.score >= 1750);
 });
 
+test('magnet completes the collection mission and advances to the boss', () => {
+  const engine = new GameEngine({ seed: 123, totalChallenges: 3, worldSpeed: 0.18 });
+  engine.start();
+  resolveCurrentAnswer(engine);
+  advance(engine, 1);
+  resolveCurrentAnswer(engine);
+  advance(engine, 1);
+  assert.equal(engine.snapshot().challenge.kind, 'collect');
+
+  assert.equal(engine.useShield(), true);
+  assert.equal(engine.useMagnet(), true);
+  advance(engine, 12);
+
+  const result = engine.snapshot();
+  assert.equal(result.phase, 'boss');
+  assert.ok(result.stars >= 4);
+  assert.ok(result.ship.hearts > 0);
+});
+
 test('power ups have limited charges', () => {
   const engine = new GameEngine({ seed: 2 });
   engine.start();
