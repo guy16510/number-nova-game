@@ -15,8 +15,8 @@ appId: com.guy16510.numbernova
 - waitForAnimationToEnd
 - takeScreenshot: artifacts/render/calibration-b
 - tapOn: "Use touch controls instead"
-- assertVisible: "SHIELD"
-- assertVisible: "MAGNET"
+- assertVisible: "BUBBLE SHIELD"
+- assertVisible: "ROCKET BOOST"
 - takeScreenshot: artifacts/render/gameplay-start-a
 - waitForAnimationToEnd
 - takeScreenshot: artifacts/render/gameplay-start-b
@@ -27,8 +27,8 @@ appId: com.guy16510.numbernova
 - takeScreenshot: artifacts/render/gameplay-steering-a
 - waitForAnimationToEnd
 - takeScreenshot: artifacts/render/gameplay-steering-b
-- tapOn: "SHIELD"
-- assertVisible: "SHIELD"
+- tapOn: "BUBBLE SHIELD"
+- assertVisible: "BUBBLE SHIELD"
 - takeScreenshot: artifacts/render/gameplay-shield-a
 - waitForAnimationToEnd
 - takeScreenshot: artifacts/render/gameplay-shield-b
