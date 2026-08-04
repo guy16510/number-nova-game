@@ -34,12 +34,6 @@
         {
           "initialOrientation": "LANDSCAPE_LEFT"
         }
-      ],
-      [
-        "expo-splash-screen",
-        {
-          "backgroundColor": "#050525"
-        }
       ]
     ],
     "extra": {
