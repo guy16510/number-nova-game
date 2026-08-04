@@ -73,9 +73,10 @@ Use **Calibrate & Launch** on a physical phone. Simulators do not provide repres
 npm run typecheck
 npm test
 npm run export:android
+npm run export:ios
 ```
 
-GitHub Actions validates Expo SDK 54 dependency compatibility, strict TypeScript, 13 deterministic game and motion tests, and an Android production Metro export on every push and pull request.
+GitHub Actions validates Expo SDK 54 dependency compatibility, strict TypeScript, 13 deterministic game and motion tests, and Android and iOS production Metro exports on every push and pull request.
 
 The automated suite covers challenge generation, answer selection, mission progression, collection behavior, limited power-up charges, boss completion, motion calibration, input normalization, and screen-relative landscape tilt mapping.
 
