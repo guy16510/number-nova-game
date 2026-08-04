@@ -149,13 +149,12 @@ jobs:
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 35
-          # ATD omits the Google launcher and background services that do not participate in app validation.
-          target: aosp_atd
+          target: default
           arch: x86_64
           profile: pixel_7
           ram-size: 2048M
           heap-size: 512M
-          emulator-options: -no-snapshot -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          emulator-options: -no-snapshot -no-window -gpu swiftshader -noaudio -no-boot-anim -camera-back none
           disable-animations: true
           disable-spellchecker: true
           script: bash scripts/run-render-smoke.sh
