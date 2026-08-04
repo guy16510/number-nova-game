@@ -31,6 +31,10 @@ const screenAxes = (
  * Expo reports sensor axes relative to portrait hardware coordinates even when
  * the game is locked to landscape. Normalizing here keeps steering consistent
  * across landscape-left, landscape-right, and touch-test recordings.
+ *
+ * Screen-space horizontal steering is intentionally inverted from the raw
+ * gravity x-axis so tilting the right edge down moves the ship right and
+ * tilting the left edge down moves it left.
  */
 export const mapGravityToScreenTilt = (
   gravity: GravitySample,
@@ -41,7 +45,7 @@ export const mapGravityToScreenTilt = (
     screen.y,
     Math.sqrt(screen.x * screen.x + screen.z * screen.z),
   );
-  const gamma = Math.atan2(
+  const gamma = -Math.atan2(
     screen.x,
     Math.sqrt(screen.y * screen.y + screen.z * screen.z),
   );
