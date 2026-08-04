@@ -22,6 +22,46 @@ sync_screenshots() {
     done
 }
 
+dismiss_system_error_dialogs() {
+  local dump_path="${LOG_DIR}/system-dialog.xml"
+  local coordinates
+
+  for _ in 1 2 3 4 5; do
+    adb shell uiautomator dump /sdcard/system-dialog.xml >/dev/null 2>&1 || true
+    adb pull /sdcard/system-dialog.xml "${dump_path}" >/dev/null 2>&1 || true
+    coordinates=$(python3 - "${dump_path}" <<'PY'
+import re
+import sys
+import xml.etree.ElementTree as ET
+from pathlib import Path
+
+path = Path(sys.argv[1])
+if not path.exists():
+    raise SystemExit(0)
+try:
+    root = ET.parse(path).getroot()
+except ET.ParseError:
+    raise SystemExit(0)
+
+for node in root.iter('node'):
+    resource_id = node.attrib.get('resource-id', '')
+    text = node.attrib.get('text', '')
+    if resource_id == 'android:id/aerr_wait' or text == 'Wait':
+        match = re.fullmatch(r'\[(\d+),(\d+)\]\[(\d+),(\d+)\]', node.attrib.get('bounds', ''))
+        if match:
+            left, top, right, bottom = map(int, match.groups())
+            print(f'{(left + right) // 2} {(top + bottom) // 2}')
+            break
+PY
+)
+    if [[ -z "${coordinates}" ]]; then
+      break
+    fi
+    adb shell input tap ${coordinates}
+    sleep 1
+  done
+}
+
 collect_diagnostics() {
   set +e
   sync_screenshots
@@ -37,6 +77,7 @@ collect_diagnostics() {
 run_maestro_flow() {
   local name="$1"
   local flow="$2"
+  dismiss_system_error_dialogs
   maestro test "${flow}" \
     --format junit \
     --output "${ARTIFACT_DIR}/maestro-${name}-results.xml" \
@@ -55,13 +96,27 @@ adb shell input keyevent 82 || true
 adb shell settings put global window_animation_scale 0
 adb shell settings put global transition_animation_scale 0
 adb shell settings put global animator_duration_scale 0
+adb shell settings put global hide_error_dialogs 1 || true
+adb shell settings put secure anr_show_background 0 || true
 adb shell settings put system accelerometer_rotation 0
 adb shell settings put system user_rotation 1
+adb shell am broadcast -a android.intent.action.CLOSE_SYSTEM_DIALOGS >/dev/null 2>&1 || true
+adb shell am force-stop com.google.android.apps.nexuslauncher >/dev/null 2>&1 || true
+adb shell am force-stop com.android.launcher3 >/dev/null 2>&1 || true
 adb logcat -c
 
 adb install -r "${APK_PATH}"
 adb shell pm clear "${APP_ID}" >/dev/null || true
+adb shell cmd package compile -m speed -f "${APP_ID}" >/dev/null 2>&1 || true
 trap collect_diagnostics EXIT
+
+# Warm the standalone release once so native libraries and the Skia surface are loaded
+# before Maestro begins timing UI assertions. The test flow still clears app state.
+adb shell am start -W -n "${APP_ID}/.MainActivity" >/dev/null
+sleep 3
+dismiss_system_error_dialogs
+adb shell am force-stop "${APP_ID}" >/dev/null 2>&1 || true
+adb logcat -c
 
 export PATH="${HOME}/.maestro/bin:${PATH}"
 export MAESTRO_CLI_NO_ANALYTICS=1
