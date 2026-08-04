@@ -125,8 +125,8 @@ run_maestro_flow "render" "e2e/render-smoke.yaml"
 run_maestro_flow "navigation" "e2e/navigation-smoke.yaml"
 
 mapfile -t screenshots < <(find "${RENDER_DIR}" -maxdepth 1 -type f -name '*.png' | sort)
-if [[ ${#screenshots[@]} -lt 9 ]]; then
-  echo "Expected at least nine screenshots across render and navigation flows, found ${#screenshots[@]}" >&2
+if [[ ${#screenshots[@]} -lt 20 ]]; then
+  echo "Expected twenty redundant screenshots across render and navigation flows, found ${#screenshots[@]}" >&2
   find "${ARTIFACT_DIR}" -maxdepth 8 -type f -print
   exit 1
 fi
@@ -140,4 +140,4 @@ if grep -E "FATAL EXCEPTION|AndroidRuntime.*FATAL|ReactNativeJS.*(TypeError|Inva
 fi
 
 trap - EXIT
-echo "Render smoke validation passed with ${#screenshots[@]} screenshots across two Maestro flows."
+echo "Render smoke validation passed with ${#screenshots[@]} redundant screenshots across two Maestro flows."
