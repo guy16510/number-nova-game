@@ -2,6 +2,9 @@ appId: com.guy16510.numbernova
 ---
 - launchApp:
     clearState: true
+- tapOn:
+    text: "Wait"
+    optional: true
 - assertVisible: "START MISSION"
 - takeScreenshot: artifacts/render/menu
 - tapOn: "START MISSION"
