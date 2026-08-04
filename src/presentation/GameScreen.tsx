@@ -68,7 +68,12 @@ export const GameScreen = ({ seed, onExit, onFinish }: GameScreenProps) => {
     if (next.challenge.id !== previous.challenge.id || (next.phase === 'boss' && previous.phase !== 'boss')) {
       feedbackRef.current.speak(next.challenge.prompt);
     }
-    if (next.score > previous.score) {
+
+    const laserFired = next.laser !== null && previous.laser === null;
+    if (laserFired) {
+      void feedbackRef.current.laser();
+    }
+    if (next.score > previous.score && !laserFired) {
       void feedbackRef.current.correct();
     }
     if (next.ship.hearts < previous.ship.hearts) {
