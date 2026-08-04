@@ -6,19 +6,29 @@ appId: com.guy16510.numbernova
     text: "Wait"
     optional: true
 - assertVisible: "START MISSION"
-- takeScreenshot: artifacts/render/menu
+- takeScreenshot: artifacts/render/menu-a
+- waitForAnimationToEnd
+- takeScreenshot: artifacts/render/menu-b
 - tapOn: "START MISSION"
 - assertVisible: "CALIBRATE & LAUNCH"
-- takeScreenshot: artifacts/render/calibration
+- takeScreenshot: artifacts/render/calibration-a
+- waitForAnimationToEnd
+- takeScreenshot: artifacts/render/calibration-b
 - tapOn: "Use touch controls instead"
 - assertVisible: "SHIELD"
 - assertVisible: "MAGNET"
-- takeScreenshot: artifacts/render/gameplay-start
+- takeScreenshot: artifacts/render/gameplay-start-a
+- waitForAnimationToEnd
+- takeScreenshot: artifacts/render/gameplay-start-b
 - swipe:
     start: 50%, 75%
     end: 25%, 45%
     duration: 900
-- takeScreenshot: artifacts/render/gameplay-steering
+- takeScreenshot: artifacts/render/gameplay-steering-a
+- waitForAnimationToEnd
+- takeScreenshot: artifacts/render/gameplay-steering-b
 - tapOn: "SHIELD"
 - assertVisible: "SHIELD"
-- takeScreenshot: artifacts/render/gameplay-shield
+- takeScreenshot: artifacts/render/gameplay-shield-a
+- waitForAnimationToEnd
+- takeScreenshot: artifacts/render/gameplay-shield-b
