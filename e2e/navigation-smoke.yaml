@@ -20,8 +20,8 @@ appId: com.guy16510.numbernova
 - tapOn: "START MISSION"
 - assertVisible: "CALIBRATE & LAUNCH"
 - tapOn: "Use touch controls instead"
-- assertVisible: "SHIELD"
-- assertVisible: "MAGNET"
+- assertVisible: "BUBBLE SHIELD"
+- assertVisible: "ROCKET BOOST"
 - tapOn: "Pause"
 - assertVisible: "Mission paused"
 - assertVisible: "RESUME"
@@ -29,8 +29,8 @@ appId: com.guy16510.numbernova
 - waitForAnimationToEnd
 - takeScreenshot: artifacts/render/nav-paused-b
 - tapOn: "RESUME"
-- assertVisible: "SHIELD"
-- assertVisible: "MAGNET"
+- assertVisible: "BUBBLE SHIELD"
+- assertVisible: "ROCKET BOOST"
 - takeScreenshot: artifacts/render/nav-resumed-a
 - waitForAnimationToEnd
 - takeScreenshot: artifacts/render/nav-resumed-b
