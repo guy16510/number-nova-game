@@ -76,9 +76,27 @@ npm run export:android
 npm run export:ios
 ```
 
-GitHub Actions validates Expo SDK 54 dependency compatibility, strict TypeScript, 13 deterministic game and motion tests, and Android and iOS production Metro exports on every push and pull request.
+The standard GitHub Actions workflow validates Expo SDK 54 dependency compatibility, strict TypeScript, 13 deterministic game and motion tests, and Android and iOS production Metro exports on every push and pull request.
 
-The automated suite covers challenge generation, answer selection, mission progression, collection behavior, limited power-up charges, boss completion, motion calibration, input normalization, and screen-relative landscape tilt mapping.
+The deterministic suite covers challenge generation, answer selection, mission progression, collection behavior, limited power-up charges, boss completion, motion calibration, input normalization, and screen-relative landscape tilt mapping.
+
+### Emulator render smoke test
+
+The `Render Smoke` workflow performs a separate black-box native validation:
+
+1. Generates the Android native project with Expo prebuild.
+2. Builds a standalone x86_64 release APK.
+3. Boots an API 35 Pixel 7 emulator with software GPU rendering.
+4. Installs and launches the release application without Metro.
+5. Uses Maestro to navigate the menu, calibration, touch steering, gameplay, and shield activation.
+6. Captures five 2400 x 1080 screenshots.
+7. Rejects blank, portrait, low-contrast, low-detail, or visually static output.
+8. Scans Android and React Native logs for fatal runtime errors.
+9. Uploads screenshots, visual analysis, Maestro results, logcat, frame statistics, and the release APK as a workflow artifact.
+
+The render workflow runs for relevant application changes, pull requests, manual dispatches, and a weekly scheduled check. It verifies that the native release starts and that the Skia game surface, React Native controls, navigation, and gameplay states visibly render.
+
+Software-emulator frame timing is intentionally diagnostic rather than a release performance gate. Final motion feel, thermal behavior, and frame rate still require physical iPhone, iPad, and Android testing.
 
 ## EAS setup
 
@@ -97,6 +115,7 @@ Then commit the generated `extra.eas.projectId` value in `app.json`.
 - Text-to-speech is used for prompts until recorded voice assets are produced.
 - RevenueCat and the paid world gate are intentionally left out until the gameplay is validated with children.
 - The current vertical slice uses resolution-independent Skia artwork. Production sprite atlases can replace it without changing game rules.
+- Android native rendering is automated, while iOS currently has production bundle validation but not an automated simulator screenshot gate.
 
 ## Next production work
 
