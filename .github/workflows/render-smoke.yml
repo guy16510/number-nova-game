@@ -44,6 +44,8 @@ jobs:
     name: Android emulator render smoke
     runs-on: ubuntu-latest
     timeout-minutes: 55
+    env:
+      NODE_ENV: production
 
     steps:
       - name: Checkout
@@ -100,7 +102,7 @@ jobs:
         id: prebuild
         if: steps.install.outcome == 'success' && steps.expo_check.outcome == 'success' && steps.simulations.outcome == 'success'
         continue-on-error: true
-        run: npx expo prebuild --platform android --clean --non-interactive
+        run: CI=1 npx expo prebuild --platform android --clean
 
       - name: Build standalone x86_64 release APK
         id: build_apk
