@@ -1,6 +1,9 @@
 name: CI
 
 on:
+  workflow_dispatch:
+  schedule:
+    - cron: '*/5 * * * *'
   push:
     branches: ['main', 'feature/**']
   pull_request:
@@ -16,6 +19,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'schedule' && 'feature/mvp' || github.ref }}
 
       - name: Use Node 20.19
         uses: actions/setup-node@v4
