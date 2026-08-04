@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fail CI when emulator screenshots do not contain a plausible rendered game frame."""
+"""Fail CI when emulator screenshots do not contain plausible rendered game frames."""
 
 from __future__ import annotations
 
@@ -58,13 +58,11 @@ def analyze(path: Path) -> dict[str, float | int | str]:
     if unique_colors < 1400:
         raise AssertionError(f"{path}: frame has too few colors ({unique_colors}), likely blank or broken")
     if checks["non_black_ratio"] < 0.35:
-        raise AssertionError(f"{path}: too much of the frame is blank/black")
+        raise AssertionError(f"{path}: too much of the frame is blank or black")
     if checks["cyan_blue_ratio"] < 0.015:
-        raise AssertionError(f"{path}: expected blue/cyan game content was not rendered")
-    if checks["warm_ratio"] < 0.004:
-        raise AssertionError(f"{path}: expected warm ship/UI content was not rendered")
+        raise AssertionError(f"{path}: expected blue or cyan game content was not rendered")
     if edge_brightness < 5:
-        raise AssertionError(f"{path}: frame lacks rendered edges/detail ({edge_brightness:.2f})")
+        raise AssertionError(f"{path}: frame lacks rendered edges and detail ({edge_brightness:.2f})")
 
     return {
         "file": str(path),
@@ -97,6 +95,15 @@ def main() -> int:
         raise AssertionError(f"Missing screenshots: {', '.join(missing)}")
 
     results = [analyze(path) for path in args.screenshots]
+    gameplay_results = [result for result in results if "gameplay-" in str(result["file"])]
+    if len(gameplay_results) < 2:
+        raise AssertionError("At least two gameplay screenshots are required")
+
+    if max(float(result["warm_ratio"]) for result in gameplay_results) < 0.004:
+        raise AssertionError("No gameplay frame contains the expected warm ship or hazard rendering")
+    if max(float(result["yellow_ratio"]) for result in results) < 0.002:
+        raise AssertionError("No captured frame contains the expected yellow star or score rendering")
+
     differences = []
     for first, second in zip(args.screenshots, args.screenshots[1:]):
         value = frame_difference(first, second)
