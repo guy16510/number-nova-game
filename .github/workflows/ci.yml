@@ -89,6 +89,7 @@ jobs:
               state: passed ? 'success' : 'failure',
               context: `number-nova/ci/${suffix}`,
               description: passed ? 'MVP validation passed' : `Failed: ${failed.join(', ')}`,
+              target_url: `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
             });
 
       - name: Fail workflow when validation failed
