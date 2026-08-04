@@ -3,7 +3,7 @@ name: Render Smoke
 on:
   workflow_dispatch:
   push:
-    branches: ['main']
+    branches: ['main', 'feature/immersive-gameplay-overhaul']
     paths:
       - 'App.tsx'
       - 'app.json'
