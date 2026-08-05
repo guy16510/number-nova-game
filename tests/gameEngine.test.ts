@@ -26,7 +26,40 @@ test('engine starts with answer targets and rejects a wrong target', () => {
     throw new Error('expected a wrong answer target');
   }
   assert.equal(engine.resolveTarget(wrong.id), false);
-  assert.equal(engine.snapshot().score, 0);
+  const result = engine.snapshot();
+  assert.equal(result.score, 0);
+  assert.equal(result.combo, 0);
+  assert.equal(result.shotsFired, 1);
+  assert.notEqual(result.laser, null);
+});
+
+test('fire always produces a visible shot and observes laser cooldown', () => {
+  const engine = new GameEngine({ seed: 11, totalChallenges: 1 });
+  engine.start();
+
+  assert.equal(engine.fire(), true);
+  const fired = engine.snapshot();
+  assert.equal(fired.shotsFired, 1);
+  assert.notEqual(fired.laser, null);
+  assert.equal(engine.fire(), false);
+
+  advance(engine, 0.35);
+  assert.equal(engine.fire(), true);
+  assert.equal(engine.snapshot().shotsFired, 2);
+});
+
+test('correct hits build a combat combo', () => {
+  const engine = new GameEngine({ seed: 21, totalChallenges: 2 });
+  engine.start();
+  resolveCurrentAnswer(engine);
+  advance(engine, 1);
+  resolveCurrentAnswer(engine);
+
+  const result = engine.snapshot();
+  assert.equal(result.combo, 2);
+  assert.equal(result.bestCombo, 2);
+  assert.equal(result.shotsFired, 2);
+  assert.ok(result.score >= 225);
 });
 
 test('correct answers advance into a boss and three boss hits complete the game', () => {
@@ -49,7 +82,7 @@ test('correct answers advance into a boss and three boss hits complete the game'
   assert.ok(result.score >= 1750);
 });
 
-test('magnet completes the collection mission and advances to the boss', () => {
+test('magnet and active flying complete the collection mission', () => {
   const engine = new GameEngine({ seed: 123, totalChallenges: 3, worldSpeed: 0.18 });
   engine.start();
   resolveCurrentAnswer(engine);
@@ -60,7 +93,23 @@ test('magnet completes the collection mission and advances to the boss', () => {
 
   assert.equal(engine.useShield(), true);
   assert.equal(engine.useMagnet(), true);
-  advance(engine, 12);
+
+  for (let frame = 0; frame < 12 * 60 && engine.snapshot().phase === 'playing'; frame += 1) {
+    if (frame === 305) {
+      assert.equal(engine.useShield(), true);
+    }
+
+    const stars = engine.snapshot().entities
+      .filter((entity) => entity.kind === 'star')
+      .sort((left, right) => left.z - right.z);
+    const target = stars[0];
+    engine.update(1 / 60, target
+      ? {
+        x: Math.max(-1, Math.min(1, target.x / 0.88)),
+        y: Math.max(-1, Math.min(1, (target.y - 0.3) / 0.45)),
+      }
+      : { x: 0, y: 0 });
+  }
 
   const result = engine.snapshot();
   assert.equal(result.phase, 'boss');
@@ -78,7 +127,6 @@ test('power ups have limited charges', () => {
   advance(engine, 6);
   assert.equal(engine.useShield(), false);
 });
-
 
 test('respawns an answer wave when the correct target leaves the world', () => {
   const seed = 3;

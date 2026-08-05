@@ -45,6 +45,9 @@ const distanceSquared = (ax: number, ay: number, bx: number, by: number): number
 };
 
 const ANSWER_COLORS = ['#36A8FF', '#73E632', '#FF8B20', '#B85CFF'];
+const LASER_SECONDS = 0.28;
+const DRY_FIRE_SECONDS = 0.2;
+const MANUAL_FIRE_LOCK_THRESHOLD = 0.2;
 
 export class GameEngine {
   private readonly random: SeededRandom;
@@ -64,6 +67,9 @@ export class GameEngine {
   private magnetCharges = 2;
   private score = 0;
   private stars = 0;
+  private combo = 0;
+  private bestCombo = 0;
+  private shotsFired = 0;
   private challengeIndex = 0;
   private currentDefinition: ChallengeDefinition;
   private currentProgress = 0;
@@ -83,8 +89,8 @@ export class GameEngine {
     this.random = new SeededRandom(options.seed ?? Date.now());
     this.challengeFactory = new ChallengeFactory(this.random);
     this.totalChallenges = options.totalChallenges ?? 6;
-    this.lockSeconds = options.lockSeconds ?? 0.42;
-    this.worldSpeed = options.worldSpeed ?? 0.24;
+    this.lockSeconds = options.lockSeconds ?? 0.8;
+    this.worldSpeed = options.worldSpeed ?? 0.28;
     this.currentDefinition = this.challengeFactory.create(0);
   }
 
@@ -130,6 +136,33 @@ export class GameEngine {
     return true;
   }
 
+  public fire(): boolean {
+    if ((this.phase !== 'playing' && this.phase !== 'boss') || this.laser !== null) {
+      return false;
+    }
+
+    const target = this.lockTargetId === null
+      ? undefined
+      : this.entities.find((entity) => entity.id === this.lockTargetId && entity.kind === 'answer');
+
+    if (target !== undefined && this.lockProgress >= MANUAL_FIRE_LOCK_THRESHOLD) {
+      this.resolveTarget(target.id);
+      return true;
+    }
+
+    this.laser = {
+      x: this.shipX,
+      y: this.shipY - 0.42,
+      z: 0.45,
+      seconds: DRY_FIRE_SECONDS,
+    };
+    this.shotsFired += 1;
+    this.combo = 0;
+    this.feedback = 'Line up a number!';
+    this.feedbackSeconds = 0.65;
+    return true;
+  }
+
   public update(deltaSeconds: number, input: SteeringInput): void {
     if (this.phase !== 'playing' && this.phase !== 'boss') {
       return;
@@ -165,19 +198,28 @@ export class GameEngine {
       return false;
     }
 
+    this.beginLaser(entity);
+
     if (!entity.correct) {
-      this.feedback = 'Look for another number';
+      this.combo = 0;
+      this.feedback = 'Wrong target, dodge and try again!';
       this.feedbackSeconds = 0.9;
       this.lockProgress = 0;
       return false;
     }
 
-    this.laser = { x: entity.x, y: entity.y, z: entity.z, seconds: 0.16 };
     this.entities = this.entities.filter((candidate) => candidate.id !== entity.id);
-    this.score += this.phase === 'boss' ? 250 : 100;
+    this.combo += 1;
+    this.bestCombo = Math.max(this.bestCombo, this.combo);
+    const comboBonus = Math.max(0, this.combo - 1) * 25;
+    this.score += (this.phase === 'boss' ? 250 : 100) + comboBonus;
     this.stars += 1;
-    this.feedback = this.phase === 'boss' ? 'Shield hit!' : 'Great shot!';
-    this.feedbackSeconds = 0.75;
+    this.feedback = this.phase === 'boss'
+      ? `Boss hit, ${this.combo} shot combo!`
+      : this.combo > 1
+        ? `${this.combo} shot combo!`
+        : 'Direct hit!';
+    this.feedbackSeconds = 0.8;
     this.lockTargetId = null;
     this.lockProgress = 0;
 
@@ -210,6 +252,9 @@ export class GameEngine {
       challenge: this.activeChallenge(),
       score: this.score,
       stars: this.stars,
+      combo: this.combo,
+      bestCombo: this.bestCombo,
+      shotsFired: this.shotsFired,
       challengeNumber: Math.min(this.challengeIndex + 1, this.totalChallenges),
       totalChallenges: this.totalChallenges,
       lockTargetId: this.lockTargetId,
@@ -224,10 +269,15 @@ export class GameEngine {
     };
   }
 
+  private beginLaser(entity: MutableEntity): void {
+    this.laser = { x: entity.x, y: entity.y, z: entity.z, seconds: LASER_SECONDS };
+    this.shotsFired += 1;
+  }
+
   private updateShip(dt: number, input: SteeringInput): void {
     const desiredX = clamp(input.x, -1, 1) * 0.88;
     const desiredY = 0.3 + clamp(input.y, -1, 1) * 0.45;
-    const responsiveness = 5.2;
+    const responsiveness = 5.8;
     this.shipX += (desiredX - this.shipX) * responsiveness * dt;
     this.shipY += (desiredY - this.shipY) * responsiveness * dt;
     this.shipX = clamp(this.shipX, -0.95, 0.95);
@@ -235,12 +285,23 @@ export class GameEngine {
   }
 
   private updateEntities(dt: number): void {
-    const speedMultiplier = this.phase === 'boss' ? 0.88 : 1;
+    const missionIntensity = Math.min(0.42, this.challengeIndex * 0.055 + this.elapsedSeconds * 0.002);
+    const speedMultiplier = (this.phase === 'boss' ? 1.16 : 1) + missionIntensity;
+
     for (const entity of this.entities) {
+      const entityNumber = Number(entity.id.split('-').at(-1)) || 0;
       entity.z -= this.worldSpeed * speedMultiplier * dt;
-      if (entity.kind === 'hazard') {
-        entity.x += Math.sin(this.elapsedSeconds * 1.5 + Number(entity.id.split('-').at(-1))) * dt * 0.025;
+
+      if (entity.kind === 'answer') {
+        entity.x += Math.sin(this.elapsedSeconds * 1.8 + entityNumber * 0.7) * dt * 0.055;
+        entity.y += Math.cos(this.elapsedSeconds * 1.25 + entityNumber) * dt * 0.018;
+      } else if (entity.kind === 'hazard') {
+        entity.x += Math.sin(this.elapsedSeconds * 2.2 + entityNumber) * dt * 0.075;
+        entity.y += Math.cos(this.elapsedSeconds * 1.7 + entityNumber * 0.4) * dt * 0.026;
       }
+
+      entity.x = clamp(entity.x, -0.98, 0.98);
+      entity.y = clamp(entity.y, -0.28, 0.76);
     }
     this.entities = this.entities.filter((entity) => entity.z > -0.18);
   }
@@ -330,8 +391,9 @@ export class GameEngine {
       return;
     }
 
+    this.combo = 0;
     this.hearts -= 1;
-    this.feedback = 'Watch out!';
+    this.feedback = 'Asteroid hit!';
     this.feedbackSeconds = 0.9;
     if (this.hearts <= 0) {
       this.phase = 'failed';
@@ -367,7 +429,7 @@ export class GameEngine {
     this.lockTargetId = null;
     this.lockProgress = 0;
     this.currentProgress = 0;
-    this.challengeDelaySeconds = bossMode ? 0.65 : 0.75;
+    this.challengeDelaySeconds = bossMode ? 0.55 : 0.65;
 
     if (bossMode) {
       this.currentDefinition = this.challengeFactory.create(this.bossMaxHealth - this.bossHealth, true);
@@ -377,7 +439,7 @@ export class GameEngine {
     this.challengeIndex += 1;
     if (this.challengeIndex >= this.totalChallenges) {
       this.phase = 'boss';
-      this.feedback = 'Boss incoming!';
+      this.feedback = 'Boss squadron incoming!';
       this.feedbackSeconds = 1.4;
       this.currentDefinition = this.challengeFactory.create(0, true);
     } else {
@@ -395,18 +457,18 @@ export class GameEngine {
       for (let index = 0; index < this.currentDefinition.targetCount; index += 1) {
         this.entities.push(this.createStar(0.58 + index * 0.13));
       }
-      this.spawnHazards(4);
+      this.spawnHazards(5 + Math.min(2, Math.floor(this.challengeIndex / 2)));
       return;
     }
 
-    const positions = this.random.shuffle([-0.58, 0, 0.58]);
+    const positions = this.random.shuffle([-0.62, 0, 0.62]);
     this.currentDefinition.options.forEach((value, index) => {
       const entity: MutableEntity = {
         id: this.id('answer'),
         kind: 'answer',
         x: positions[index] ?? 0,
-        y: this.random.integer(-15, 20) / 100,
-        z: 0.72 + index * 0.045,
+        y: this.random.integer(-18, 18) / 100,
+        z: 0.76 + index * 0.055,
         radius: 0.2,
         color: ANSWER_COLORS[index % ANSWER_COLORS.length] ?? '#36A8FF',
         label: String(value),
@@ -414,7 +476,10 @@ export class GameEngine {
       };
       this.entities.push(entity);
     });
-    this.spawnHazards(this.phase === 'boss' ? 3 : 5);
+    const hazards = this.phase === 'boss'
+      ? 7
+      : 4 + Math.min(2, Math.floor(this.challengeIndex / 2));
+    this.spawnHazards(hazards);
   }
 
   private spawnHazards(count: number): void {
@@ -422,11 +487,11 @@ export class GameEngine {
       this.entities.push({
         id: this.id('hazard'),
         kind: 'hazard',
-        x: this.random.integer(-90, 90) / 100,
+        x: this.random.integer(-92, 92) / 100,
         y: this.random.integer(-25, 70) / 100,
-        z: 0.35 + this.random.next() * 0.75 + index * 0.05,
+        z: 0.32 + this.random.next() * 0.78 + index * 0.045,
         radius: 0.13,
-        color: index % 2 === 0 ? '#FF472E' : '#8D2CFF',
+        color: index % 3 === 0 ? '#FF472E' : index % 3 === 1 ? '#8D2CFF' : '#A96E4A',
       });
     }
   }

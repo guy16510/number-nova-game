@@ -23,6 +23,10 @@ interface GameScreenProps {
 
 type ControlMode = 'motion' | 'touch';
 
+const PHYSICS_STEP_SECONDS = 1 / 60;
+const SNAPSHOT_INTERVAL_MS = 1000 / 30;
+const MAX_PHYSICS_STEPS_PER_FRAME = 4;
+
 export const GameScreen = ({ seed, onExit, onFinish }: GameScreenProps) => {
   const engineRef = useRef(new GameEngine({ seed }));
   const motionRef = useRef(new ExpoMotionInput());
@@ -30,6 +34,8 @@ export const GameScreen = ({ seed, onExit, onFinish }: GameScreenProps) => {
   const inputRef = useRef<SteeringInput>({ x: 0, y: 0 });
   const frameRef = useRef<number | null>(null);
   const lastFrameRef = useRef<number | null>(null);
+  const accumulatorRef = useRef(0);
+  const lastPublishRef = useRef(0);
   const previousSnapshotRef = useRef<GameSnapshot>(engineRef.current.snapshot());
   const finishSentRef = useRef(false);
 
@@ -56,7 +62,11 @@ export const GameScreen = ({ seed, onExit, onFinish }: GameScreenProps) => {
     const subscription = AppState.addEventListener('change', (state) => {
       if (state !== 'active' && started) {
         engineRef.current.pause();
-        setSnapshot(engineRef.current.snapshot());
+        const next = engineRef.current.snapshot();
+        previousSnapshotRef.current = next;
+        setSnapshot(next);
+        lastFrameRef.current = null;
+        accumulatorRef.current = 0;
         setShowPause(true);
       }
     });
@@ -69,7 +79,7 @@ export const GameScreen = ({ seed, onExit, onFinish }: GameScreenProps) => {
       feedbackRef.current.speak(next.challenge.prompt);
     }
 
-    const laserFired = next.laser !== null && previous.laser === null;
+    const laserFired = next.shotsFired > previous.shotsFired;
     if (laserFired) {
       void feedbackRef.current.laser();
     }
@@ -89,12 +99,31 @@ export const GameScreen = ({ seed, onExit, onFinish }: GameScreenProps) => {
 
     const tick = (timestamp: number) => {
       const last = lastFrameRef.current ?? timestamp;
-      const deltaSeconds = Math.min(0.05, (timestamp - last) / 1000);
+      const frameSeconds = Math.min(0.1, Math.max(0, (timestamp - last) / 1000));
       lastFrameRef.current = timestamp;
-      engineRef.current.update(deltaSeconds, inputRef.current);
-      const next = engineRef.current.snapshot();
-      publishFeedback(next);
-      setSnapshot(next);
+      accumulatorRef.current += frameSeconds;
+
+      let physicsSteps = 0;
+      while (
+        accumulatorRef.current >= PHYSICS_STEP_SECONDS
+        && physicsSteps < MAX_PHYSICS_STEPS_PER_FRAME
+      ) {
+        engineRef.current.update(PHYSICS_STEP_SECONDS, inputRef.current);
+        accumulatorRef.current -= PHYSICS_STEP_SECONDS;
+        physicsSteps += 1;
+      }
+
+      if (physicsSteps === MAX_PHYSICS_STEPS_PER_FRAME) {
+        accumulatorRef.current = Math.min(accumulatorRef.current, PHYSICS_STEP_SECONDS);
+      }
+
+      if (timestamp - lastPublishRef.current >= SNAPSHOT_INTERVAL_MS) {
+        const next = engineRef.current.snapshot();
+        publishFeedback(next);
+        setSnapshot(next);
+        lastPublishRef.current = timestamp;
+      }
+
       frameRef.current = requestAnimationFrame(tick);
     };
 
@@ -142,6 +171,9 @@ export const GameScreen = ({ seed, onExit, onFinish }: GameScreenProps) => {
     engineRef.current.start();
     const next = engineRef.current.snapshot();
     previousSnapshotRef.current = next;
+    lastFrameRef.current = null;
+    accumulatorRef.current = 0;
+    lastPublishRef.current = 0;
     setSnapshot(next);
     setStarted(true);
     setCalibrating(false);
@@ -150,30 +182,55 @@ export const GameScreen = ({ seed, onExit, onFinish }: GameScreenProps) => {
 
   const handlePause = useCallback(() => {
     engineRef.current.pause();
-    setSnapshot(engineRef.current.snapshot());
+    const next = engineRef.current.snapshot();
+    previousSnapshotRef.current = next;
+    setSnapshot(next);
+    lastFrameRef.current = null;
+    accumulatorRef.current = 0;
     setShowPause(true);
   }, []);
 
   const handleResume = useCallback(() => {
     inputRef.current = { x: 0, y: 0 };
     engineRef.current.resume();
-    setSnapshot(engineRef.current.snapshot());
+    const next = engineRef.current.snapshot();
+    previousSnapshotRef.current = next;
+    setSnapshot(next);
     lastFrameRef.current = null;
+    accumulatorRef.current = 0;
+    lastPublishRef.current = 0;
     setShowPause(false);
   }, []);
 
   const handleShield = useCallback(() => {
     if (engineRef.current.useShield()) {
       void feedbackRef.current.powerUp();
-      setSnapshot(engineRef.current.snapshot());
+      const next = engineRef.current.snapshot();
+      previousSnapshotRef.current = next;
+      setSnapshot(next);
     }
   }, []);
 
   const handleMagnet = useCallback(() => {
     if (engineRef.current.useMagnet()) {
       void feedbackRef.current.powerUp();
-      setSnapshot(engineRef.current.snapshot());
+      const next = engineRef.current.snapshot();
+      previousSnapshotRef.current = next;
+      setSnapshot(next);
     }
+  }, []);
+
+  const handleFire = useCallback(() => {
+    if (!engineRef.current.fire()) {
+      return;
+    }
+    const next = engineRef.current.snapshot();
+    publishFeedback(next);
+    setSnapshot(next);
+  }, [publishFeedback]);
+
+  const handleTouchInput = useCallback((input: SteeringInput) => {
+    inputRef.current = input;
   }, []);
 
   return (
@@ -181,10 +238,16 @@ export const GameScreen = ({ seed, onExit, onFinish }: GameScreenProps) => {
       <GameCanvas snapshot={snapshot} />
       <TouchSteeringLayer
         enabled={started && controlMode === 'touch' && !showPause}
-        onInput={(input) => { inputRef.current = input; }}
+        onInput={handleTouchInput}
       />
       {started ? (
-        <GameHud snapshot={snapshot} onPause={handlePause} onShield={handleShield} onMagnet={handleMagnet} />
+        <GameHud
+          snapshot={snapshot}
+          onPause={handlePause}
+          onShield={handleShield}
+          onMagnet={handleMagnet}
+          onFire={handleFire}
+        />
       ) : null}
 
       {!started ? (
@@ -193,7 +256,7 @@ export const GameScreen = ({ seed, onExit, onFinish }: GameScreenProps) => {
             <Text style={styles.eyebrow}>FLIGHT TRAINING</Text>
             <Text style={styles.title}>Hold the phone comfortably</Text>
             <Text style={styles.body}>
-              Keep it level, then calibrate. Tilt left and right to steer through the asteroid field.
+              Keep it level, then calibrate. Tilt to dodge asteroids, line up an enemy, and tap FIRE.
             </Text>
             <View style={styles.phoneDiagram}>
               <Text style={styles.phoneIcon}>📱</Text>
@@ -231,6 +294,8 @@ export const GameScreen = ({ seed, onExit, onFinish }: GameScreenProps) => {
                 onPress={() => {
                   setShowPause(false);
                   engineRef.current.resume();
+                  lastFrameRef.current = null;
+                  accumulatorRef.current = 0;
                   void motionRef.current.calibrate();
                 }}
                 style={styles.secondaryButton}
