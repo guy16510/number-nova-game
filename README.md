@@ -40,87 +40,130 @@ SOLID boundaries:
 - `ChallengeFactory` creates educational content.
 - `ExpoMotionInput` implements the motion-input port.
 - `MotionFilter` is pure and independently tested.
-- `ExpoFeedbackService` isolates speech and haptics.
+- `ExpoFeedbackService` isolates speech, haptics, and sound playback.
 - `ExpoProgressRepository` isolates local persistence.
 - `GameCanvas` renders snapshots and does not own rules.
 
-## Run locally
+## Install and validate
 
 Requirements:
 
 - Node.js 20.19 or newer
-- Xcode or Android Studio for native development builds
-- Expo CLI through `npx`
+- Expo Go for the fastest physical iPhone test
+- macOS and Xcode for a local native iOS build
+- An Apple Developer account for EAS device builds
 
 ```bash
 npm install
+npm run doctor
 npm run validate
-npm run start:go
 ```
 
-The MVP can run in Expo Go because its current native libraries are included there. For production-like sensor and splash validation, use a development build:
+## Run on an iPhone with Expo Go
+
+This is the default and fastest path. It does not require an EAS project, Apple signing, or a custom development client.
 
 ```bash
-npx eas-cli@latest build --profile development --platform ios
 npm start
 ```
 
-Use **Calibrate & Launch** on a physical phone. Simulators do not provide representative DeviceMotion data, so use the touch fallback there.
+`npm start` now explicitly targets Expo Go and clears Metro's cache. Scan the QR code with the iPhone Camera app, then open it in Expo Go. The phone and development computer must be able to reach each other on the network.
 
-## Validation
+Use this equivalent command when a cache reset is not needed:
 
 ```bash
-npm run typecheck
-npm test
-npm run export:android
-npm run export:ios
+npm run start:go
 ```
 
-The standard GitHub Actions workflow validates Expo SDK 54 dependency compatibility, strict TypeScript, 13 deterministic game and motion tests, and Android and iOS production Metro exports on every push and pull request.
+Do not use `npm run start:dev-client` with Expo Go. That command only works after a Number Nova development build has been installed on the phone.
 
-The deterministic suite covers challenge generation, answer selection, mission progression, collection behavior, limited power-up charges, boss completion, motion calibration, input normalization, and screen-relative landscape tilt mapping.
+## Run a local native build on a connected iPhone
 
-### Emulator render smoke test
+Connect the iPhone to a Mac, trust the Mac, enable Developer Mode on the iPhone, and run:
 
-The `Render Smoke` workflow performs a separate black-box native validation:
+```bash
+npm run ios:device
+```
 
-1. Generates the Android native project with Expo prebuild.
-2. Builds a standalone x86_64 release APK.
-3. Boots an API 35 Pixel 7 emulator with software GPU rendering.
-4. Installs and launches the release application without Metro.
-5. Uses Maestro to navigate the menu, calibration, touch steering, gameplay, and shield activation.
-6. Captures five 2400 x 1080 screenshots.
-7. Rejects blank, portrait, low-contrast, low-detail, or visually static output.
-8. Scans Android and React Native logs for fatal runtime errors.
-9. Uploads screenshots, visual analysis, Maestro results, logcat, frame statistics, and the release APK as a workflow artifact.
+This invokes `expo run:ios --device`, generates the native iOS project when needed, uses Xcode signing, installs the app, and starts Metro.
 
-The render workflow runs for relevant application changes, pull requests, manual dispatches, and a weekly scheduled check. It verifies that the native release starts and that the Skia game surface, React Native controls, navigation, and gameplay states visibly render.
+When native dependencies or app plugins change, rebuild from a clean generated project:
 
-Software-emulator frame timing is intentionally diagnostic rather than a release performance gate. Final motion feel, thermal behavior, and frame rate still require physical iPhone, iPad, and Android testing.
+```bash
+npm run ios:prebuild
+npm run ios:device
+```
 
-## EAS setup
+## Create an EAS development build for a physical iPhone
 
-The repository contains a placeholder project ID. Before EAS builds:
+The repository no longer contains a fake EAS project ID. Link it once before the first cloud build:
 
 ```bash
 npx eas-cli@latest login
 npx eas-cli@latest init
 ```
 
-Then commit the generated `extra.eas.projectId` value in `app.json`.
+Register the physical iPhone before building. The generated ad hoc provisioning profile only includes devices registered at build time.
+
+```bash
+npm run ios:eas:register-device
+npm run ios:eas:development
+```
+
+After the development build is installed, start Metro with:
+
+```bash
+npm run start:dev-client
+```
+
+A newly registered device requires a new build or a re-signed build. Developer Mode must be enabled on iOS 16 or newer.
+
+For a standalone internal build that runs without Metro:
+
+```bash
+npm run ios:eas:preview
+```
+
+## Common iPhone failure modes
+
+- **QR opens a missing development build message:** use `npm start` for Expo Go, or install an EAS development build before using `npm run start:dev-client`.
+- **EAS says the project ID is invalid:** run `npx eas-cli@latest init`. The old placeholder ID was intentionally removed.
+- **The IPA installs but will not launch:** enable Settings > Privacy & Security > Developer Mode and confirm the device was registered before the build was created.
+- **The app cannot be installed on this device:** register the device and create a new development or preview build.
+- **Metro connects to an old bundle or fails after dependency changes:** run `npm run start:go:clear`, or rebuild the native client after `npm run ios:prebuild`.
+- **Motion does not work in a simulator:** use a physical phone or the touch-control fallback.
+
+## Validation
+
+```bash
+npm run verify:ios
+npm run typecheck
+npm test
+npm run export:android
+npm run export:ios
+```
+
+The standard CI workflow validates Expo SDK 54 dependency compatibility, the resolved Expo app configuration, strict TypeScript, deterministic game tests, and Android and iOS production Metro exports.
+
+The separate `iOS Native Build` workflow runs on macOS, generates the iOS native project, installs CocoaPods, and compiles the complete Xcode workspace for an iOS Simulator without code signing. This catches native module and CocoaPods failures that a JavaScript export cannot detect.
+
+### Android emulator render smoke test
+
+The `Render Smoke` workflow performs a black-box native validation:
+
+1. Generates the Android native project with Expo prebuild.
+2. Builds a standalone x86_64 release APK.
+3. Boots an API 35 Pixel 7 emulator with software GPU rendering.
+4. Installs and launches the release application without Metro.
+5. Uses Maestro to navigate the menu, calibration, touch steering, gameplay, and shield activation.
+6. Captures redundant gameplay screenshots.
+7. Rejects blank, portrait, low-contrast, low-detail, or visually static output.
+8. Scans Android and React Native logs for fatal runtime errors.
+9. Uploads screenshots, analysis, Maestro results, logs, frame statistics, and the release APK.
 
 ## MVP limitations
 
 - Visual content is a Skia-rendered 2.5D vertical slice, not true 3D.
 - Text-to-speech is used for prompts until recorded voice assets are produced.
-- RevenueCat and the paid world gate are intentionally left out until the gameplay is validated with children.
-- The current vertical slice uses resolution-independent Skia artwork. Production sprite atlases can replace it without changing game rules.
-- Android native rendering is automated, while iOS currently has production bundle validation but not an automated simulator screenshot gate.
-
-## Next production work
-
-1. Replace procedural ship, asteroid, hazard, and boss art with isolated production atlases.
-2. Record consistent voice prompts and add music and sound effects.
-3. Test motion tuning with children ages 4-7 on multiple physical devices.
-4. Add a parent-gated one-time full-game purchase after retention is validated.
-5. Profile release builds and move high-volume sprites into Skia Atlas buffers if needed.
+- RevenueCat and the paid world gate are intentionally left out until gameplay is validated with children.
+- Final motion feel, thermal behavior, audio volume, and frame rate still require physical iPhone, iPad, and Android testing.
