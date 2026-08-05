@@ -54,7 +54,7 @@ export const MissionMapScreen = ({ missions, progress, onSelect, onBack, onHanga
       </View>
       <View style={styles.headerActions}>
         <Pressable onPress={onHangar} style={styles.headerButton}><Text style={styles.headerButtonText}>CUSTOMIZE</Text></Pressable>
-        <Pressable onLongPress={onParents} delayLongPress={850} style={styles.headerButton}><Text style={styles.headerButtonText}>PARENTS</Text></Pressable>
+        <Pressable onPress={onParents} style={styles.headerButton}><Text style={styles.headerButtonText}>PARENTS</Text></Pressable>
       </View>
     </View>
 
