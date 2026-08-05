@@ -7,28 +7,38 @@ appId: com.guy16510.numbernova
     optional: true
 - assertVisible: "START MISSION"
 - takeScreenshot: artifacts/render/menu-a
-- waitForAnimationToEnd
+- waitForAnimationToEnd:
+    timeout: 1000
 - takeScreenshot: artifacts/render/menu-b
 - tapOn: "START MISSION"
 - assertVisible: "CALIBRATE & LAUNCH"
 - takeScreenshot: artifacts/render/calibration-a
-- waitForAnimationToEnd
+- waitForAnimationToEnd:
+    timeout: 1000
 - takeScreenshot: artifacts/render/calibration-b
-- tapOn: "Use touch controls instead"
+- tapOn:
+    text: "Use touch controls instead"
+    waitToSettleTimeoutMs: 1000
 - assertVisible: "BUBBLE SHIELD"
 - assertVisible: "ROCKET BOOST"
 - takeScreenshot: artifacts/render/gameplay-start-a
-- waitForAnimationToEnd
+- waitForAnimationToEnd:
+    timeout: 1000
 - takeScreenshot: artifacts/render/gameplay-start-b
 - swipe:
     start: 50%, 75%
     end: 25%, 45%
     duration: 900
+    waitToSettleTimeoutMs: 1000
 - takeScreenshot: artifacts/render/gameplay-steering-a
-- waitForAnimationToEnd
+- waitForAnimationToEnd:
+    timeout: 1000
 - takeScreenshot: artifacts/render/gameplay-steering-b
-- tapOn: "BUBBLE SHIELD"
+- tapOn:
+    text: "BUBBLE SHIELD"
+    waitToSettleTimeoutMs: 1000
 - assertVisible: "BUBBLE SHIELD"
 - takeScreenshot: artifacts/render/gameplay-shield-a
-- waitForAnimationToEnd
+- waitForAnimationToEnd:
+    timeout: 1000
 - takeScreenshot: artifacts/render/gameplay-shield-b

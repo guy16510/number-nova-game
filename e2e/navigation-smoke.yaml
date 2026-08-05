@@ -7,37 +7,52 @@ appId: com.guy16510.numbernova
     optional: true
 - assertVisible: "START MISSION"
 - takeScreenshot: artifacts/render/nav-menu-a
-- waitForAnimationToEnd
+- waitForAnimationToEnd:
+    timeout: 1000
 - takeScreenshot: artifacts/render/nav-menu-b
 - longPressOn: "Hold for Parents"
 - assertVisible: "Parent dashboard"
 - assertVisible: "DONE"
 - takeScreenshot: artifacts/render/nav-parents-a
-- waitForAnimationToEnd
+- waitForAnimationToEnd:
+    timeout: 1000
 - takeScreenshot: artifacts/render/nav-parents-b
 - tapOn: "DONE"
 - assertVisible: "START MISSION"
 - tapOn: "START MISSION"
 - assertVisible: "CALIBRATE & LAUNCH"
-- tapOn: "Use touch controls instead"
-- assertVisible: "SHIELD"
-- assertVisible: "MAGNET"
-- tapOn: "Pause"
+- tapOn:
+    text: "Use touch controls instead"
+    waitToSettleTimeoutMs: 1000
+- assertVisible: "BUBBLE SHIELD"
+- assertVisible: "ROCKET BOOST"
+- tapOn:
+    text: "Pause"
+    waitToSettleTimeoutMs: 1000
 - assertVisible: "Mission paused"
 - assertVisible: "RESUME"
 - takeScreenshot: artifacts/render/nav-paused-a
-- waitForAnimationToEnd
+- waitForAnimationToEnd:
+    timeout: 1000
 - takeScreenshot: artifacts/render/nav-paused-b
-- tapOn: "RESUME"
-- assertVisible: "SHIELD"
-- assertVisible: "MAGNET"
+- tapOn:
+    text: "RESUME"
+    waitToSettleTimeoutMs: 1000
+- assertVisible: "BUBBLE SHIELD"
+- assertVisible: "ROCKET BOOST"
 - takeScreenshot: artifacts/render/nav-resumed-a
-- waitForAnimationToEnd
+- waitForAnimationToEnd:
+    timeout: 1000
 - takeScreenshot: artifacts/render/nav-resumed-b
-- tapOn: "Pause"
+- tapOn:
+    text: "Pause"
+    waitToSettleTimeoutMs: 1000
 - assertVisible: "Mission paused"
-- tapOn: "Exit mission"
+- tapOn:
+    text: "Exit mission"
+    waitToSettleTimeoutMs: 1000
 - assertVisible: "START MISSION"
 - takeScreenshot: artifacts/render/nav-exited-a
-- waitForAnimationToEnd
+- waitForAnimationToEnd:
+    timeout: 1000
 - takeScreenshot: artifacts/render/nav-exited-b
