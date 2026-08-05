@@ -5,7 +5,7 @@ on:
   schedule:
     - cron: '17 6 * * *'
   push:
-    branches: ['main', 'feature/**']
+    branches: ['main', 'feature/**', 'fix/**']
   pull_request:
     branches: ['main']
 
@@ -39,6 +39,14 @@ jobs:
         continue-on-error: true
         run: npx expo install --check
 
+      - name: Validate iOS and EAS configuration
+        id: ios_config
+        if: steps.install.outcome == 'success'
+        continue-on-error: true
+        run: |
+          npm run verify:ios
+          npx expo config --type public --json > artifacts-expo-config.json
+
       - name: Typecheck
         id: typecheck
         if: steps.install.outcome == 'success'
@@ -69,6 +77,7 @@ jobs:
         env:
           INSTALL: ${{ steps.install.outcome }}
           EXPO_CHECK: ${{ steps.expo_check.outcome }}
+          IOS_CONFIG: ${{ steps.ios_config.outcome }}
           TYPECHECK: ${{ steps.typecheck.outcome }}
           TESTS: ${{ steps.tests.outcome }}
           ANDROID_EXPORT: ${{ steps.android_export.outcome }}
@@ -80,6 +89,7 @@ jobs:
             const outcomes = {
               install: process.env.INSTALL,
               expo: process.env.EXPO_CHECK,
+              iosConfig: process.env.IOS_CONFIG,
               typecheck: process.env.TYPECHECK,
               tests: process.env.TESTS,
               android: process.env.ANDROID_EXPORT,
@@ -101,5 +111,5 @@ jobs:
             });
 
       - name: Fail workflow when validation failed
-        if: always() && (steps.install.outcome != 'success' || steps.expo_check.outcome != 'success' || steps.typecheck.outcome != 'success' || steps.tests.outcome != 'success' || steps.android_export.outcome != 'success' || steps.ios_export.outcome != 'success')
+        if: always() && (steps.install.outcome != 'success' || steps.expo_check.outcome != 'success' || steps.ios_config.outcome != 'success' || steps.typecheck.outcome != 'success' || steps.tests.outcome != 'success' || steps.android_export.outcome != 'success' || steps.ios_export.outcome != 'success')
         run: exit 1
