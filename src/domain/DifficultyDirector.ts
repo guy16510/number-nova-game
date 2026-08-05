@@ -8,6 +8,10 @@ export interface DifficultyPort {
   accuracy(): number;
 }
 
+/**
+ * Adapts educational complexity and action intensity independently so a child
+ * can receive easier math without making the flight and combat loop feel dull.
+ */
 export class AdaptiveDifficultyDirector implements DifficultyPort {
   private shots = 0;
   private hits = 0;
