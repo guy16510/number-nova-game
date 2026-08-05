@@ -51,6 +51,9 @@ export interface GameSnapshot {
   readonly challenge: ActiveChallenge;
   readonly score: number;
   readonly stars: number;
+  readonly combo: number;
+  readonly bestCombo: number;
+  readonly shotsFired: number;
   readonly challengeNumber: number;
   readonly totalChallenges: number;
   readonly lockTargetId: string | null;
