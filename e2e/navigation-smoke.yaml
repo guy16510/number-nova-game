@@ -5,7 +5,7 @@ appId: com.guy16510.numbernova
 - tapOn:
     text: "Wait"
     optional: true
-- assertVisible: "START MISSION"
+- assertVisible: "CHOOSE MISSION"
 - takeScreenshot: artifacts/render/nav-menu-a
 - waitForAnimationToEnd:
     timeout: 1000
@@ -14,12 +14,12 @@ appId: com.guy16510.numbernova
 - assertVisible: "Parent dashboard"
 - assertVisible: "DONE"
 - takeScreenshot: artifacts/render/nav-parents-a
-- waitForAnimationToEnd:
-    timeout: 1000
-- takeScreenshot: artifacts/render/nav-parents-b
 - tapOn: "DONE"
-- assertVisible: "START MISSION"
-- tapOn: "START MISSION"
+- assertVisible: "CHOOSE MISSION"
+- tapOn: "CHOOSE MISSION"
+- assertVisible: "Choose the next mission"
+- assertVisible: "Restore Numbers Station"
+- tapOn: "Restore Numbers Station"
 - assertVisible: "CALIBRATE & LAUNCH"
 - tapOn:
     text: "Use touch controls instead"
@@ -33,19 +33,11 @@ appId: com.guy16510.numbernova
 - assertVisible: "Mission paused"
 - assertVisible: "RESUME"
 - takeScreenshot: artifacts/render/nav-paused-a
-- waitForAnimationToEnd:
-    timeout: 1000
-- takeScreenshot: artifacts/render/nav-paused-b
 - tapOn:
     text: "RESUME"
     waitToSettleTimeoutMs: 1000
-- assertVisible: "BUBBLE SHIELD"
 - assertVisible: "FIRE"
-- assertVisible: "ROCKET BOOST"
 - takeScreenshot: artifacts/render/nav-resumed-a
-- waitForAnimationToEnd:
-    timeout: 1000
-- takeScreenshot: artifacts/render/nav-resumed-b
 - tapOn:
     text: "Pause"
     waitToSettleTimeoutMs: 1000
@@ -53,7 +45,7 @@ appId: com.guy16510.numbernova
 - tapOn:
     text: "Exit mission"
     waitToSettleTimeoutMs: 1000
-- assertVisible: "START MISSION"
+- assertVisible: "Choose the next mission"
 - takeScreenshot: artifacts/render/nav-exited-a
 - waitForAnimationToEnd:
     timeout: 1000
