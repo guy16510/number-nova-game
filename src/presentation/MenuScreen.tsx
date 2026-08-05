@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import type { GameSnapshot } from '../domain/types';
 import type { PlayerProgress } from '../infrastructure/ProgressRepository';
@@ -34,6 +34,7 @@ export const MenuScreen = ({ progress, onPlay, onHangar, onParents }: MenuScreen
   const [previewSeconds, setPreviewSeconds] = useState(0);
   const frameRef = useRef<number | null>(null);
   const startRef = useRef<number | null>(null);
+  const parentHoldRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     const tick = (timestamp: number) => {
@@ -43,7 +44,23 @@ export const MenuScreen = ({ progress, onPlay, onHangar, onParents }: MenuScreen
       frameRef.current = requestAnimationFrame(tick);
     };
     frameRef.current = requestAnimationFrame(tick);
-    return () => { if (frameRef.current !== null) cancelAnimationFrame(frameRef.current); };
+    return () => {
+      if (frameRef.current !== null) cancelAnimationFrame(frameRef.current);
+      if (parentHoldRef.current !== null) clearTimeout(parentHoldRef.current);
+    };
+  }, []);
+
+  const beginParentHold = useCallback(() => {
+    if (parentHoldRef.current !== null) clearTimeout(parentHoldRef.current);
+    parentHoldRef.current = setTimeout(() => {
+      parentHoldRef.current = null;
+      onParents();
+    }, 300);
+  }, [onParents]);
+
+  const cancelParentHold = useCallback(() => {
+    if (parentHoldRef.current !== null) clearTimeout(parentHoldRef.current);
+    parentHoldRef.current = null;
   }, []);
 
   const snapshot = useMemo<GameSnapshot>(() => ({
@@ -81,11 +98,11 @@ export const MenuScreen = ({ progress, onPlay, onHangar, onParents }: MenuScreen
         accessibilityHint="Hold to open the parent dashboard"
         testID="parent-access"
         hitSlop={12}
-        onLongPress={onParents}
-        delayLongPress={500}
+        onPressIn={beginParentHold}
+        onPressOut={cancelParentHold}
         style={styles.parentButton}
       >
-        <Text style={styles.parentText}>Hold for Parents</Text>
+        <Text pointerEvents="none" style={styles.parentText}>Hold for Parents</Text>
       </Pressable>
       <Text style={styles.version}>MASTERY LEARNING • OFFLINE • NO ADS • KID SAFE</Text>
     </View>
