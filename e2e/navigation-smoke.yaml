@@ -10,7 +10,8 @@ appId: com.guy16510.numbernova
 - waitForAnimationToEnd:
     timeout: 1000
 - takeScreenshot: artifacts/render/nav-menu-b
-- longPressOn: "Hold for Parents"
+- longPressOn:
+    id: "parent-access"
 - assertVisible: "Parent dashboard"
 - assertVisible: "DONE"
 - takeScreenshot: artifacts/render/nav-parents-a
