@@ -14,17 +14,19 @@ import { GameScreen } from './src/presentation/GameScreen';
 import { HangarScreen } from './src/presentation/HangarScreen';
 import { MenuScreen } from './src/presentation/MenuScreen';
 import { MissionMapScreen } from './src/presentation/MissionMapScreen';
+import { ParentGateScreen } from './src/presentation/ParentGateScreen';
 import { ParentScreen } from './src/presentation/ParentScreen';
 import { ResultsScreen } from './src/presentation/ResultsScreen';
 
 void SplashScreen.preventAutoHideAsync();
 SplashScreen.setOptions({ duration: 500, fade: true });
 
-type Screen = 'menu' | 'missions' | 'game' | 'results' | 'parents' | 'hangar';
+type Screen = 'menu' | 'missions' | 'game' | 'results' | 'parentGate' | 'parents' | 'hangar';
 
 export default function App() {
   const repository = useMemo(() => new ExpoProgressRepository(), []);
   const [screen, setScreen] = useState<Screen>('menu');
+  const [parentReturnScreen, setParentReturnScreen] = useState<'menu' | 'missions'>('menu');
   const [progress, setProgress] = useState<PlayerProgress>(EMPTY_PROGRESS);
   const [result, setResult] = useState<GameSnapshot | null>(null);
   const [selectedMission, setSelectedMission] = useState<MissionPlan | null>(null);
@@ -99,6 +101,11 @@ export default function App() {
     setProgress(EMPTY_PROGRESS);
   }, [repository]);
 
+  const openParentGate = useCallback((returnScreen: 'menu' | 'missions') => {
+    setParentReturnScreen(returnScreen);
+    setScreen('parentGate');
+  }, []);
+
   if (!ready) return null;
   const companionName = progress.equippedRewards.companion === 'pip-companion' ? 'Pip' : 'Nova Coach';
 
@@ -110,7 +117,7 @@ export default function App() {
           progress={progress}
           onPlay={() => setScreen('missions')}
           onHangar={() => setScreen('hangar')}
-          onParents={() => setScreen('parents')}
+          onParents={() => openParentGate('menu')}
         />
       ) : null}
       {screen === 'missions' ? (
@@ -120,7 +127,7 @@ export default function App() {
           onSelect={startMission}
           onBack={() => setScreen('menu')}
           onHangar={() => setScreen('hangar')}
-          onParents={() => setScreen('parents')}
+          onParents={() => openParentGate('missions')}
         />
       ) : null}
       {screen === 'game' && selectedMission ? (
@@ -144,7 +151,13 @@ export default function App() {
           onMenu={() => { void stopAtMenu(); }}
         />
       ) : null}
-      {screen === 'parents' ? <ParentScreen progress={progress} onReset={() => { void resetProgress(); }} onClose={() => setScreen('menu')} /> : null}
+      {screen === 'parentGate' ? (
+        <ParentGateScreen
+          onUnlock={() => setScreen('parents')}
+          onCancel={() => setScreen(parentReturnScreen)}
+        />
+      ) : null}
+      {screen === 'parents' ? <ParentScreen progress={progress} onReset={() => { void resetProgress(); }} onClose={() => setScreen(parentReturnScreen)} /> : null}
       {screen === 'hangar' ? <HangarScreen progress={progress} onEquip={(id, type) => { void equipReward(id, type); }} onClose={() => setScreen('menu')} /> : null}
     </View>
   );
