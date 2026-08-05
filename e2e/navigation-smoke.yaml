@@ -28,7 +28,7 @@ appId: com.guy16510.numbernova
     text: "Use touch controls instead"
     waitToSettleTimeoutMs: 1000
 - assertVisible: "BUBBLE SHIELD"
-- assertVisible: "FIRE"
+- assertVisible: "Fire lasers"
 - assertVisible: "ROCKET BOOST"
 - tapOn:
     text: "Pause"
@@ -42,7 +42,7 @@ appId: com.guy16510.numbernova
 - tapOn:
     text: "RESUME"
     waitToSettleTimeoutMs: 1000
-- assertVisible: "FIRE"
+- assertVisible: "Fire lasers"
 - takeScreenshot: artifacts/render/nav-resumed-a
 - waitForAnimationToEnd:
     timeout: 1000
