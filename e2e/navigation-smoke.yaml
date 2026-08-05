@@ -14,6 +14,9 @@ appId: com.guy16510.numbernova
 - assertVisible: "Parent dashboard"
 - assertVisible: "DONE"
 - takeScreenshot: artifacts/render/nav-parents-a
+- waitForAnimationToEnd:
+    timeout: 1000
+- takeScreenshot: artifacts/render/nav-parents-b
 - tapOn: "DONE"
 - assertVisible: "CHOOSE MISSION"
 - tapOn: "CHOOSE MISSION"
@@ -33,11 +36,17 @@ appId: com.guy16510.numbernova
 - assertVisible: "Mission paused"
 - assertVisible: "RESUME"
 - takeScreenshot: artifacts/render/nav-paused-a
+- waitForAnimationToEnd:
+    timeout: 1000
+- takeScreenshot: artifacts/render/nav-paused-b
 - tapOn:
     text: "RESUME"
     waitToSettleTimeoutMs: 1000
 - assertVisible: "FIRE"
 - takeScreenshot: artifacts/render/nav-resumed-a
+- waitForAnimationToEnd:
+    timeout: 1000
+- takeScreenshot: artifacts/render/nav-resumed-b
 - tapOn:
     text: "Pause"
     waitToSettleTimeoutMs: 1000
