@@ -82,7 +82,7 @@ test('correct answers advance into a boss and three boss hits complete the game'
   assert.ok(result.score >= 1750);
 });
 
-test('magnet completes the collection mission and advances to the boss', () => {
+test('magnet and active flying complete the collection mission', () => {
   const engine = new GameEngine({ seed: 123, totalChallenges: 3, worldSpeed: 0.18 });
   engine.start();
   resolveCurrentAnswer(engine);
@@ -93,7 +93,23 @@ test('magnet completes the collection mission and advances to the boss', () => {
 
   assert.equal(engine.useShield(), true);
   assert.equal(engine.useMagnet(), true);
-  advance(engine, 12);
+
+  for (let frame = 0; frame < 12 * 60 && engine.snapshot().phase === 'playing'; frame += 1) {
+    if (frame === 305) {
+      assert.equal(engine.useShield(), true);
+    }
+
+    const stars = engine.snapshot().entities
+      .filter((entity) => entity.kind === 'star')
+      .sort((left, right) => left.z - right.z);
+    const target = stars[0];
+    engine.update(1 / 60, target
+      ? {
+        x: Math.max(-1, Math.min(1, target.x / 0.88)),
+        y: Math.max(-1, Math.min(1, (target.y - 0.3) / 0.45)),
+      }
+      : { x: 0, y: 0 });
+  }
 
   const result = engine.snapshot();
   assert.equal(result.phase, 'boss');
