@@ -22,7 +22,6 @@ export interface FeedbackPort {
 }
 
 export class ExpoFeedbackService implements FeedbackPort {
-  private static readonly audioEnabled = false;
   private readonly audio = new GameAudioDirector(new NumberNovaAudioCatalog(), new ExpoSoundPoolFactory());
   private readonly ready: Promise<void>;
   private stopped = false;
@@ -32,14 +31,20 @@ export class ExpoFeedbackService implements FeedbackPort {
   }
 
   public speak(text: string): void {
-    if (!ExpoFeedbackService.audioEnabled) return;
-    Speech.stop();
-    Speech.speak(text, { language: 'en-US', rate: 0.9, pitch: 1.08, volume: 0.88 });
+    if (this.stopped) return;
+    try {
+      Speech.stop();
+      Speech.speak(text, { language: 'en-US', rate: 0.9, pitch: 1.08, volume: 0.88 });
+    } catch {
+      // Speech is optional and must never crash gameplay.
+    }
   }
 
   public async laser(): Promise<void> {
-    await this.withAudio(() => this.audio.laser());
-    await this.safeHaptic(() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium));
+    await Promise.all([
+      this.withAudio(() => this.audio.laser()),
+      this.safeHaptic(() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)),
+    ]);
   }
 
   public async correct(): Promise<void> {
@@ -89,13 +94,13 @@ export class ExpoFeedbackService implements FeedbackPort {
   }
 
   public stop(): void {
-    Speech.stop();
+    if (this.stopped) return;
     this.stopped = true;
-    void this.ready.finally(() => this.audio.stop());
+    try { Speech.stop(); } catch { /* speech is optional */ }
+    void this.ready.finally(() => this.audio.stop()).catch(() => undefined);
   }
 
   private async prepareAudio(): Promise<void> {
-    if (!ExpoFeedbackService.audioEnabled) return;
     try {
       await Audio.setAudioModeAsync({
         playsInSilentModeIOS: true,
@@ -109,7 +114,6 @@ export class ExpoFeedbackService implements FeedbackPort {
   }
 
   private async withAudio(action: () => Promise<void>): Promise<void> {
-    if (!ExpoFeedbackService.audioEnabled) return;
     try {
       await this.ready;
       if (!this.stopped) await action();
