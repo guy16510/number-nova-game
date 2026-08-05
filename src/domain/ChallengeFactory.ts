@@ -169,7 +169,7 @@ export class ChallengeFactory implements ChallengeFactoryPort {
   }
 
   private createOptions(answer: number, mathLevel: number): readonly number[] {
-    const maximum = Math.max(10, answer + 4, 5 + mathLevel * 2);
+    const maximum = Math.min(20, Math.max(10, answer + 4, 5 + mathLevel * 2));
     const values = new Set<number>([answer]);
     const offsets = this.random.shuffle([-4, -3, -2, -1, 1, 2, 3, 4]);
     for (const offset of offsets) {
