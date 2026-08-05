@@ -5,12 +5,15 @@ appId: com.guy16510.numbernova
 - tapOn:
     text: "Wait"
     optional: true
-- assertVisible: "START MISSION"
+- assertVisible: "CHOOSE MISSION"
 - takeScreenshot: artifacts/render/menu-a
 - waitForAnimationToEnd:
     timeout: 1000
 - takeScreenshot: artifacts/render/menu-b
-- tapOn: "START MISSION"
+- tapOn: "CHOOSE MISSION"
+- assertVisible: "Choose the next mission"
+- takeScreenshot: artifacts/render/mission-map-a
+- tapOn: "Restore Numbers Station"
 - assertVisible: "CALIBRATE & LAUNCH"
 - takeScreenshot: artifacts/render/calibration-a
 - waitForAnimationToEnd:
@@ -20,7 +23,7 @@ appId: com.guy16510.numbernova
     text: "Use touch controls instead"
     waitToSettleTimeoutMs: 1000
 - assertVisible: "BUBBLE SHIELD"
-- assertVisible: "FIRE"
+- assertVisible: "Fire lasers"
 - assertVisible: "ROCKET BOOST"
 - takeScreenshot: artifacts/render/gameplay-start-a
 - waitForAnimationToEnd:
@@ -32,11 +35,8 @@ appId: com.guy16510.numbernova
     duration: 900
     waitToSettleTimeoutMs: 1000
 - takeScreenshot: artifacts/render/gameplay-steering-a
-- waitForAnimationToEnd:
-    timeout: 1000
-- takeScreenshot: artifacts/render/gameplay-steering-b
 - tapOn:
-    text: "FIRE"
+    text: "Fire lasers"
     waitToSettleTimeoutMs: 100
 - takeScreenshot: artifacts/render/gameplay-laser
 - tapOn:
