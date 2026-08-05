@@ -5,7 +5,6 @@ import {
   Circle,
   Fill,
   Group,
-  Image as SkiaImage,
   Line,
   LinearGradient,
   Path,
@@ -14,7 +13,6 @@ import {
   Skia,
   Text,
   matchFont,
-  useImage,
   vec,
 } from '@shopify/react-native-skia';
 import type { GameSnapshot, WorldEntity } from '../domain/types';
@@ -23,220 +21,220 @@ interface Props { readonly snapshot: GameSnapshot }
 interface Projected { readonly entity: WorldEntity; readonly x: number; readonly y: number; readonly scale: number }
 
 const family = Platform.select({ ios: 'Avenir Next', default: 'sans-serif' });
-const answerFont = matchFont({ fontFamily: family, fontSize: 62, fontWeight: 'bold' });
-const LASER_DURATION_SECONDS = 0.28;
-const CAMERA_SCALE = 0.68;
+const numberFont = matchFont({ fontFamily: family, fontSize: 62, fontWeight: 'bold' });
+const smallFont = matchFont({ fontFamily: family, fontSize: 22, fontWeight: 'bold' });
+const CAMERA_SCALE = 0.7;
 
-const clamp01 = (value: number): number => Math.max(0, Math.min(1, value));
-const lerp = (start: number, end: number, progress: number): number => start + (end - start) * progress;
-
-const star = (outer: number, inner: number) => {
+const starPath = (outer: number, inner: number) => {
   const path = Skia.Path.Make();
-  for (let i = 0; i < 10; i += 1) {
-    const radius = i % 2 === 0 ? outer : inner;
-    const angle = -Math.PI / 2 + (i * Math.PI) / 5;
-    if (i === 0) path.moveTo(Math.cos(angle) * radius, Math.sin(angle) * radius);
+  for (let index = 0; index < 10; index += 1) {
+    const radius = index % 2 === 0 ? outer : inner;
+    const angle = -Math.PI / 2 + (index * Math.PI) / 5;
+    if (index === 0) path.moveTo(Math.cos(angle) * radius, Math.sin(angle) * radius);
     else path.lineTo(Math.cos(angle) * radius, Math.sin(angle) * radius);
   }
   path.close();
   return path;
 };
 
-const jagged = (radius: number, seed: number, points = 15) => {
+const jaggedPath = (radius: number, seed: number, points = 15) => {
   const path = Skia.Path.Make();
-  for (let i = 0; i < points; i += 1) {
-    const angle = (i / points) * Math.PI * 2;
-    const pointRadius = radius + Math.sin(i * 3.7 + seed) * 7;
-    if (i === 0) path.moveTo(Math.cos(angle) * pointRadius, Math.sin(angle) * pointRadius);
+  for (let index = 0; index < points; index += 1) {
+    const angle = (index / points) * Math.PI * 2;
+    const pointRadius = radius + Math.sin(index * 3.7 + seed) * 7;
+    if (index === 0) path.moveTo(Math.cos(angle) * pointRadius, Math.sin(angle) * pointRadius);
     else path.lineTo(Math.cos(angle) * pointRadius, Math.sin(angle) * pointRadius);
   }
   path.close();
   return path;
 };
 
-const enemyHullPath = Skia.Path.MakeFromSVGString('M -86 20 L -42 -15 L -24 -64 L 0 -84 L 24 -64 L 42 -15 L 86 20 L 54 42 L 24 31 L 0 56 L -24 31 L -54 42 Z')!;
-const enemyWingPath = Skia.Path.MakeFromSVGString('M -96 8 L -42 -28 L -34 10 L -74 39 Z M 96 8 L 42 -28 L 34 10 L 74 39 Z')!;
-const enemyCanopyPath = Skia.Path.MakeFromSVGString('M -22 -38 Q 0 -65 22 -38 L 15 -5 L -15 -5 Z')!;
-const asteroidPathA = jagged(66, 2.4);
-const asteroidPathB = jagged(62, 8.9);
-const mineBody = jagged(51, 7.2, 12);
-const collectibleStarPath = star(38, 16);
-const impactStarPath = star(54, 12);
+const enemyHull = Skia.Path.MakeFromSVGString('M -84 20 L -44 -16 L -24 -62 L 0 -84 L 24 -62 L 44 -16 L 84 20 L 54 42 L 24 31 L 0 58 L -24 31 L -54 42 Z')!;
+const enemyWing = Skia.Path.MakeFromSVGString('M -96 8 L -42 -28 L -34 10 L -74 39 Z M 96 8 L 42 -28 L 34 10 L 74 39 Z')!;
+const bossHull = Skia.Path.MakeFromSVGString('M -150 12 L -104 -46 L -55 -55 L -22 -104 L 0 -124 L 22 -104 L 55 -55 L 104 -46 L 150 12 L 108 54 L 62 40 L 26 78 L 0 92 L -26 78 L -62 40 L -108 54 Z')!;
+const shipHull = Skia.Path.MakeFromSVGString('M 0 -88 L 46 -34 L 102 24 L 48 22 L 34 64 L 0 43 L -34 64 L -48 22 L -102 24 L -46 -34 Z')!;
+const asteroidA = jaggedPath(64, 2.4);
+const asteroidB = jaggedPath(60, 8.9);
+const minePath = jaggedPath(50, 7.2, 12);
+const collectibleStar = starPath(38, 16);
+const explosionStar = starPath(60, 14);
 
-const STAR_FIELD = Array.from({ length: 54 }, (_, i) => ({
-  x: ((i * 73) % 997) / 997,
-  y: ((i * 191) % 991) / 991,
-  r: 0.8 + ((i * 31) % 9) / 7,
-  opacity: 0.35 + ((i * 19) % 50) / 100,
+const STAR_FIELD = Array.from({ length: 70 }, (_, index) => ({
+  x: ((index * 73) % 997) / 997,
+  y: ((index * 191) % 991) / 991,
+  r: 0.7 + ((index * 31) % 11) / 7,
+  opacity: 0.28 + ((index * 19) % 55) / 100,
 }));
 
-const SPEED_LINES = Array.from({ length: 16 }, (_, i) => ({
-  x: ((i * 83) % 941) / 941,
-  y: ((i * 157) % 887) / 887,
-  length: 14 + ((i * 23) % 36),
-  speed: 0.19 + ((i * 13) % 20) / 100,
+const SPEED_LINES = Array.from({ length: 22 }, (_, index) => ({
+  x: ((index * 83) % 941) / 941,
+  y: ((index * 157) % 887) / 887,
+  length: 14 + ((index * 23) % 42),
+  speed: 0.16 + ((index * 13) % 22) / 100,
 }));
 
 const project = (entity: WorldEntity, width: number, height: number): Projected => {
-  const depth = Math.max(0, Math.min(1.2, 1 - entity.z));
-  const spread = 0.1 + depth * 1.04;
+  const depth = Math.max(0, Math.min(1.25, 1 - entity.z));
+  const spread = 0.11 + depth * 1.04;
   return {
     entity,
     x: width / 2 + entity.x * width * 0.49 * spread,
-    y: height * 0.2 + entity.y * height * 0.33 * spread + depth * height * 0.16,
-    scale: (0.18 + depth * depth * 1.28) * CAMERA_SCALE,
+    y: height * 0.2 + entity.y * height * 0.34 * spread + depth * height * 0.17,
+    scale: (0.18 + depth * depth * 1.3) * CAMERA_SCALE,
   };
 };
 
-type LoadedImage = ReturnType<typeof useImage>;
-
-const StaticSpaceBackdropView = ({ width, height }: { readonly width: number; readonly height: number }) => {
-  const background = useImage(require('../../assets/generated/concept-space-bg.webp'));
-  return (
-    <>
-      <Fill>
-        <LinearGradient start={vec(0, 0)} end={vec(width, height)} colors={['#01020F', '#06104D', '#1A063F', '#02020E']} />
-      </Fill>
-      {background ? (
-        <SkiaImage image={background} x={-width * 0.03} y={-height * 0.03} width={width * 1.06} height={height * 1.06} fit="cover" opacity={0.78} />
-      ) : null}
-      <Rect x={0} y={0} width={width} height={height} color="#02041945" />
-      <Circle cx={width * 0.1} cy={height * 0.28} r={height * 0.055} color="#D57351">
-        <RadialGradient c={vec(width * 0.08, height * 0.25)} r={height * 0.1} colors={['#FFE2A3', '#D57351', '#59283E']} />
-      </Circle>
-      <Circle cx={width * 0.91} cy={height * 0.2} r={height * 0.06} color="#A255D3">
-        <RadialGradient c={vec(width * 0.88, height * 0.17)} r={height * 0.11} colors={['#FFD9A8', '#A255D3', '#35175A']} />
-      </Circle>
-      {STAR_FIELD.map((point, index) => (
-        <Circle
-          key={index}
-          cx={point.x * width}
-          cy={point.y * height}
-          r={point.r}
-          color="#E8F8FF"
-          opacity={point.opacity}
-        />
-      ))}
-      <Path
-        path={`M ${-width * 0.08} ${height * 0.78} C ${width * 0.15} ${height * 0.32}, ${width * 0.35} ${height * 0.88}, ${width * 0.55} ${height * 0.59} S ${width * 0.86} ${height * 0.3}, ${width * 1.08} ${height * 0.54}`}
-        style="stroke"
-        strokeWidth={height * 0.06}
-        color="#9B2CFF20"
-      />
-    </>
-  );
-};
-
-const StaticSpaceBackdrop = React.memo(StaticSpaceBackdropView);
-
-const SpeedTunnel = ({ width, height, time, shipX }: { readonly width: number; readonly height: number; readonly time: number; readonly shipX: number }) => (
+const Backdrop = ({ width, height, time, shipX }: { readonly width: number; readonly height: number; readonly time: number; readonly shipX: number }) => (
   <>
+    <Fill>
+      <LinearGradient start={vec(0, 0)} end={vec(width, height)} colors={['#01020F', '#07104C', '#19053D', '#02020D']} />
+    </Fill>
+    <Circle cx={width * 0.11} cy={height * 0.24} r={height * 0.07} color="#D57351">
+      <RadialGradient c={vec(width * 0.085, height * 0.2)} r={height * 0.13} colors={['#FFF0B8', '#D57351', '#54233E']} />
+    </Circle>
+    <Circle cx={width * 0.9} cy={height * 0.18} r={height * 0.065} color="#9E55D5">
+      <RadialGradient c={vec(width * 0.87, height * 0.14)} r={height * 0.12} colors={['#FFDDB5', '#9E55D5', '#301456']} />
+    </Circle>
+    <Path
+      path={`M ${-width * 0.1} ${height * 0.75} C ${width * 0.14} ${height * 0.32}, ${width * 0.36} ${height * 0.9}, ${width * 0.58} ${height * 0.58} S ${width * 0.86} ${height * 0.29}, ${width * 1.1} ${height * 0.53}`}
+      style="stroke"
+      strokeWidth={height * 0.07}
+      color="#A137FF1D"
+    />
+    {STAR_FIELD.map((point, index) => (
+      <Circle
+        key={index}
+        cx={point.x * width - shipX * width * 0.006}
+        cy={point.y * height}
+        r={point.r}
+        color="#EAF8FF"
+        opacity={point.opacity}
+      />
+    ))}
     {SPEED_LINES.map((line, index) => {
       const travel = (line.y + time * line.speed) % 1;
-      const centerPull = (line.x - 0.5) * travel * width * 0.18;
-      const x = line.x * width + centerPull - shipX * width * 0.018;
+      const x = line.x * width + (line.x - 0.5) * travel * width * 0.18 - shipX * width * 0.02;
       const y = travel * height;
-      const length = line.length * (0.4 + travel);
+      const length = line.length * (0.35 + travel);
       return (
         <Line
           key={index}
           p1={vec(x, y)}
-          p2={vec(x + (line.x - 0.5) * length * 0.4, y + length)}
+          p2={vec(x + (line.x - 0.5) * length * 0.42, y + length)}
           color="#9CEBFF"
-          strokeWidth={0.8 + travel * 1.6}
-          opacity={0.14 + travel * 0.35}
+          strokeWidth={0.7 + travel * 1.8}
+          opacity={0.12 + travel * 0.34}
         />
       );
     })}
   </>
 );
 
-const EnemyTarget = ({
-  item,
-  locked,
-  correct,
-  progress,
-  time,
-  boss,
-}: {
-  readonly item: Projected;
-  readonly locked: boolean;
-  readonly correct: boolean;
-  readonly progress: number;
-  readonly time: number;
-  readonly boss: boolean;
-}) => {
+const Enemy = ({ item, snapshot }: { readonly item: Projected; readonly snapshot: GameSnapshot }) => {
   const { entity, x, y } = item;
-  const scale = item.scale * (boss ? 1.18 : 1);
+  const boss = entity.archetype === 'boss';
+  const shielded = (entity.health ?? 1) > 1;
+  const locked = snapshot.lockTargetId === entity.id;
+  const correct = entity.correct === true;
+  const scale = item.scale * (boss ? 1.4 : entity.archetype === 'shield-ship' ? 1.08 : 1);
   const label = entity.label ?? '';
-  const offset = label.length > 1 ? -35 : -18;
-  const bank = Math.sin(time * 1.7 + x * 0.01) * 0.12;
-  const pulse = 1 + Math.sin(time * 4 + y) * 0.025;
+  const labelOffset = label.length > 1 ? -35 : -18;
+  const bank = boss ? Math.sin(snapshot.elapsedSeconds * 0.7) * 0.04 : Math.sin(snapshot.elapsedSeconds * 1.8 + x * 0.01) * 0.12;
+  const pulse = 1 + Math.sin(snapshot.elapsedSeconds * 4 + y) * 0.025;
 
   return (
     <Group transform={[{ translateX: x }, { translateY: y }, { scale: scale * pulse }, { rotate: bank }]}>
-      <Circle cx={0} cy={0} r={112} color={`${entity.color}20`} />
-      <Path path={enemyWingPath} color="#151C45">
-        <LinearGradient start={vec(-90, -20)} end={vec(90, 45)} colors={[entity.color, '#18234E', '#080B22']} />
+      <Circle cx={0} cy={0} r={boss ? 180 : 112} color={`${entity.color}22`} />
+      <Path path={boss ? bossHull : enemyWing} color="#171D48">
+        <LinearGradient start={vec(-100, -50)} end={vec(100, 60)} colors={[entity.color, '#1B2858', '#070A20']} />
       </Path>
-      <Path path={enemyHullPath} color="#25386D">
-        <LinearGradient start={vec(0, -86)} end={vec(0, 58)} colors={['#EAF7FF', entity.color, '#151A43']} />
-      </Path>
-      <Path path={enemyCanopyPath} color="#101A38">
-        <LinearGradient start={vec(0, -60)} end={vec(0, -4)} colors={['#A9F5FF', '#1E5B9C', '#081029']} />
-      </Path>
-      <Circle cx={-49} cy={26} r={11} color="#FF6B36" />
-      <Circle cx={49} cy={26} r={11} color="#FF6B36" />
-      <Circle cx={-49} cy={27} r={5} color="#FFF18A" />
-      <Circle cx={49} cy={27} r={5} color="#FFF18A" />
-      <Circle cx={0} cy={14} r={31} color="#08112D" />
-      <Circle cx={0} cy={14} r={28} color={`${entity.color}E8`} />
-      <Text x={offset + 3} y={35} text={label} font={answerFont} color="#030617B0" />
-      <Text x={offset} y={31} text={label} font={answerFont} color="#FFFFFF" />
+      {!boss ? (
+        <Path path={enemyHull} color="#263A72">
+          <LinearGradient start={vec(0, -84)} end={vec(0, 60)} colors={['#EAF8FF', entity.color, '#151A43']} />
+        </Path>
+      ) : null}
+      <Circle cx={0} cy={boss ? 8 : 14} r={boss ? 45 : 31} color="#07102C" />
+      <Circle cx={0} cy={boss ? 8 : 14} r={boss ? 39 : 27} color={`${entity.color}E8`} />
+      {label ? (
+        <>
+          <Text x={labelOffset + 3} y={boss ? 31 : 35} text={label} font={numberFont} color="#030617B0" />
+          <Text x={labelOffset} y={boss ? 27 : 31} text={label} font={numberFont} color="#FFFFFF" />
+        </>
+      ) : null}
+      {entity.archetype === 'bomber-alien' ? (
+        <>
+          <Circle cx={-58} cy={31} r={12} color="#FF3A68" />
+          <Circle cx={58} cy={31} r={12} color="#FF3A68" />
+        </>
+      ) : null}
+      {shielded ? (
+        <Circle cx={0} cy={0} r={boss ? 168 : 102} style="stroke" strokeWidth={8} color="#72F3FFCC" />
+      ) : null}
+      {boss ? (
+        <>
+          <Circle cx={-70} cy={22} r={15} color="#FF6A36" />
+          <Circle cx={70} cy={22} r={15} color="#FF6A36" />
+          <Text x={-55} y={-82} text={`STAGE ${snapshot.bossStage}`} font={smallFont} color="#FFF083" />
+        </>
+      ) : null}
       {locked ? (
         <>
-          <Circle cx={0} cy={0} r={106 + progress * 8} color={correct ? '#A8FF4A1D' : '#FF405B1D'} />
-          <Circle cx={0} cy={0} r={101 + progress * 7} style="stroke" strokeWidth={5 + progress * 4} color={correct ? '#EFFF6A' : '#FF5B72'} />
-          <Path path="M -120 -72 L -120 -112 L -80 -112 M 120 -72 L 120 -112 L 80 -112 M -120 72 L -120 112 L -80 112 M 120 72 L 120 112 L 80 112" style="stroke" strokeWidth={5} color="#F5FFFF" />
+          <Circle cx={0} cy={0} r={(boss ? 170 : 105) + snapshot.lockProgress * 8} color={correct ? '#A8FF4A1A' : '#FF405B1A'} />
+          <Circle
+            cx={0}
+            cy={0}
+            r={(boss ? 164 : 99) + snapshot.lockProgress * 7}
+            style="stroke"
+            strokeWidth={5 + snapshot.lockProgress * 4}
+            color={correct ? '#F3FF62' : '#FF5B72'}
+          />
         </>
       ) : null}
     </Group>
   );
 };
 
-const Hazard = ({ item, time, image }: { readonly item: Projected; readonly time: number; readonly image: LoadedImage }) => {
+const Hazard = ({ item, time }: { readonly item: Projected; readonly time: number }) => {
   const { entity, x, y, scale } = item;
-  const entityNumber = Number(entity.id.split('-').at(-1)) || 0;
-  const mine = entityNumber % 3 === 0;
-
-  if (mine) {
-    return (
-      <Group transform={[{ translateX: x }, { translateY: y }, { scale: scale * 0.75 }, { rotate: time * 0.55 + entityNumber }]}>
-        <Circle cx={0} cy={0} r={76} color="#FF2B1A18" />
-        <Path path={mineBody} color="#262A45">
-          <RadialGradient c={vec(-18, -22)} r={82} colors={['#8D94B0', '#292D4C', '#050610']} />
-        </Path>
-        {[0, 1, 2, 3].map((index) => (
-          <Path key={index} path="M 0 -82 L 12 -48 L -12 -48 Z" color="#FF5B2E" transform={[{ rotate: (index * Math.PI) / 2 }]} />
-        ))}
-        <Circle cx={0} cy={0} r={22} color="#FF3B23" />
-        <Circle cx={0} cy={0} r={10} color="#FFD45B" />
-      </Group>
-    );
-  }
-
-  const path = entityNumber % 2 === 0 ? asteroidPathA : asteroidPathB;
+  const number = Number(entity.id.split('-').at(-1)) || 0;
+  const mine = number % 3 === 0 || entity.warning;
+  const path = number % 2 === 0 ? asteroidA : asteroidB;
   return (
-    <Group transform={[{ translateX: x }, { translateY: y }, { scale: scale * 0.78 }, { rotate: time * 0.22 + entityNumber }]}>
-      <Circle cx={0} cy={0} r={82} color="#FFAA6630" />
-      {image ? <SkiaImage image={image} x={-78} y={-78} width={156} height={156} fit="contain" /> : (
-        <Path path={path} color="#67515B">
-          <RadialGradient c={vec(-20, -24)} r={94} colors={['#D9B58B', '#755561', '#211C2C']} />
-        </Path>
-      )}
-      <Path path={path} color="#E4C29B77" style="stroke" strokeWidth={4} />
-      <Circle cx={-22} cy={-18} r={13} color="#20192766" />
-      <Circle cx={24} cy={15} r={10} color="#20192766" />
+    <Group transform={[{ translateX: x }, { translateY: y }, { scale: scale * 0.78 }, { rotate: time * (mine ? 0.58 : 0.22) + number }]}>
+      <Circle cx={0} cy={0} r={mine ? 78 : 82} color={mine ? '#FF2B1A20' : '#FFAA6628'} />
+      <Path path={mine ? minePath : path} color={mine ? '#2A2E4E' : '#67515B'}>
+        <RadialGradient c={vec(-18, -22)} r={88} colors={mine ? ['#9EA6C4', '#292D4C', '#050610'] : ['#DFC29A', '#765664', '#201B2C']} />
+      </Path>
+      {mine ? [0, 1, 2, 3].map((index) => (
+        <Path key={index} path="M 0 -82 L 12 -48 L -12 -48 Z" color="#FF5B2E" transform={[{ rotate: (index * Math.PI) / 2 }]} />
+      )) : null}
+      <Circle cx={0} cy={0} r={mine ? 18 : 0} color="#FF3B23" />
+      {entity.shootable ? <Circle cx={0} cy={0} r={70} style="stroke" strokeWidth={5} color="#F4FF64" /> : null}
+    </Group>
+  );
+};
+
+const Gate = ({ item, locked }: { readonly item: Projected; readonly locked: boolean }) => {
+  const { entity, x, y, scale } = item;
+  const label = entity.label ?? '';
+  return (
+    <Group transform={[{ translateX: x }, { translateY: y }, { scale: scale * 1.1 }]}>
+      <Circle cx={0} cy={0} r={92} style="stroke" strokeWidth={16} color={`${entity.color}CC`} />
+      <Circle cx={0} cy={0} r={67} style="stroke" strokeWidth={4} color="#FFFFFFAA" />
+      <Text x={label.length > 1 ? -34 : -18} y={22} text={label} font={numberFont} color="#FFFFFF" />
+      {locked ? <Circle cx={0} cy={0} r={108} style="stroke" strokeWidth={5} color="#F4FF64" /> : null}
+    </Group>
+  );
+};
+
+const PowerUp = ({ item, time }: { readonly item: Projected; readonly time: number }) => {
+  const label = item.entity.label ?? '★';
+  return (
+    <Group transform={[{ translateX: item.x }, { translateY: item.y }, { scale: item.scale * (0.9 + Math.sin(time * 5) * 0.08) }, { rotate: time * 0.6 }]}>
+      <Circle cx={0} cy={0} r={67} color={`${item.entity.color}30`} />
+      <Circle cx={0} cy={0} r={48} color={item.entity.color} />
+      <Circle cx={0} cy={0} r={45} style="stroke" strokeWidth={5} color="#FFFFFFCC" />
+      <Text x={label.length > 1 ? -25 : -11} y={9} text={label} font={smallFont} color="#FFFFFF" />
     </Group>
   );
 };
@@ -244,126 +242,126 @@ const Hazard = ({ item, time, image }: { readonly item: Projected; readonly time
 const Collectible = ({ item, time }: { readonly item: Projected; readonly time: number }) => (
   <Group transform={[{ translateX: item.x }, { translateY: item.y }, { scale: item.scale * (0.86 + Math.sin(time * 5) * 0.08) }, { rotate: time * 0.45 }]}>
     <Circle cx={0} cy={0} r={58} color="#FFD83B25" />
-    <Path path={collectibleStarPath} color="#FFD43B" />
-    <Path path={collectibleStarPath} color="#FFF4A8" style="stroke" strokeWidth={5} />
+    <Path path={collectibleStar} color="#FFD43B" />
+    <Path path={collectibleStar} color="#FFF4A8" style="stroke" strokeWidth={5} />
   </Group>
 );
 
-const Ship = ({ snapshot, width, height, time, image }: { readonly snapshot: GameSnapshot; readonly width: number; readonly height: number; readonly time: number; readonly image: LoadedImage }) => {
-  const x = width / 2 + snapshot.ship.x * width * 0.31;
-  const y = height * (0.84 + snapshot.ship.y * 0.045) + Math.sin(time * 4.2) * 2;
-  const scale = Math.min(width / 1536, height / 864) * 0.72 * (snapshot.ship.magnetSeconds > 0 ? 1.05 : 1);
-  const bank = Math.max(-0.18, Math.min(0.18, snapshot.ship.x * 0.16));
+const Ally = ({ item, time }: { readonly item: Projected; readonly time: number }) => (
+  <Group transform={[{ translateX: item.x }, { translateY: item.y }, { scale: item.scale * 0.8 }, { rotate: Math.sin(time * 2) * 0.05 }]}>
+    <Path path={shipHull} color="#55DFF2">
+      <LinearGradient start={vec(0, -90)} end={vec(0, 70)} colors={['#FFFFFF', '#55DFF2', '#173A72']} />
+    </Path>
+    <Circle cx={0} cy={-14} r={18} color="#85FFB8" />
+  </Group>
+);
+
+const Projectile = ({ item }: { readonly item: Projected }) => (
+  <Group transform={[{ translateX: item.x }, { translateY: item.y }, { scale: Math.max(0.4, item.scale) }]}>
+    <Circle cx={0} cy={0} r={18} color={`${item.entity.color}40`} />
+    <Line p1={vec(0, 24)} p2={vec(0, -24)} strokeWidth={8} color={item.entity.color} />
+    <Circle cx={0} cy={-24} r={7} color="#FFFFFF" />
+  </Group>
+);
+
+const Explosion = ({ item, time }: { readonly item: Projected; readonly time: number }) => {
+  const life = Math.max(0.2, item.entity.ttl ?? 0.4);
+  const pulse = 0.8 + Math.sin(time * 18 + item.x) * 0.16;
   return (
-    <Group transform={[{ translateX: x }, { translateY: y }, { scale }, { rotate: bank }]}>
-      <Circle cx={0} cy={12} r={170} color="#139BFF12" />
-      <Circle cx={-84} cy={112} r={26 + Math.sin(time * 18) * 5} color="#28CFFF4D" />
-      <Circle cx={84} cy={112} r={26 + Math.cos(time * 17) * 5} color="#28CFFF4D" />
-      {image ? <SkiaImage image={image} x={-305} y={-197} width={610} height={394} fit="contain" /> : null}
-      {snapshot.ship.shieldSeconds > 0 ? (
-        <>
-          <Circle cx={0} cy={-8} r={174} color="#2CCAFF14" />
-          <Circle cx={0} cy={-8} r={169} color="#7BE9FF" style="stroke" strokeWidth={8} />
-        </>
-      ) : null}
+    <Group transform={[{ translateX: item.x }, { translateY: item.y }, { scale: item.scale * pulse }]}>
+      <Circle cx={0} cy={0} r={92 * life} color={`${item.entity.color}55`} />
+      <Path path={explosionStar} color={item.entity.color} />
+      <Circle cx={0} cy={0} r={28} color="#FFFFFF" />
     </Group>
   );
 };
 
-const LaserBolts = ({
-  target,
-  shipX,
-  shipY,
-  shipScale,
-  seconds,
-}: {
-  readonly target: Projected;
-  readonly shipX: number;
-  readonly shipY: number;
-  readonly shipScale: number;
-  readonly seconds: number;
-}) => {
-  const progress = clamp01(1 - seconds / LASER_DURATION_SECONDS);
-  const tailProgress = clamp01(progress - 0.34);
-  const impact = clamp01((progress - 0.55) / 0.45);
-  const muzzles = [-105, 105];
+const PlayerShip = ({ snapshot, width, height }: { readonly snapshot: GameSnapshot; readonly width: number; readonly height: number }) => {
+  const x = width / 2 + snapshot.ship.x * width * 0.31;
+  const y = height * (0.84 + snapshot.ship.y * 0.045) + Math.sin(snapshot.elapsedSeconds * 4.2) * 2;
+  const scale = Math.min(width / 1536, height / 864) * 0.72;
+  const bank = Math.max(-0.2, Math.min(0.2, snapshot.ship.x * 0.18));
+  const weaponColor = snapshot.ship.weapon === 'rainbow-beam'
+    ? '#FF67ED'
+    : snapshot.ship.weapon === 'comet-missile'
+      ? '#FF9A3C'
+      : snapshot.ship.weapon === 'triple-shot'
+        ? '#63F0FF'
+        : '#3EC8FF';
+  return (
+    <Group transform={[{ translateX: x }, { translateY: y }, { scale }, { rotate: bank }]}>
+      <Circle cx={0} cy={12} r={170} color="#42DFFF16" />
+      {snapshot.ship.shieldSeconds > 0 ? (
+        <Circle cx={0} cy={0} r={146} style="stroke" strokeWidth={12} color="#70EDFFD0" />
+      ) : null}
+      <Path path={shipHull} color="#264E94">
+        <LinearGradient start={vec(0, -92)} end={vec(0, 70)} colors={['#F4FBFF', '#41B9FF', '#19306D']} />
+      </Path>
+      <Circle cx={0} cy={-20} r={27} color="#071B47" />
+      <Circle cx={0} cy={-22} r={22} color="#79F3FF" />
+      <Circle cx={-41} cy={42} r={14} color="#FF7B31" />
+      <Circle cx={41} cy={42} r={14} color="#FF7B31" />
+      <Line p1={vec(-41, 48)} p2={vec(-41, 100 + Math.sin(snapshot.elapsedSeconds * 12) * 12)} strokeWidth={18} color={weaponColor} />
+      <Line p1={vec(41, 48)} p2={vec(41, 100 + Math.cos(snapshot.elapsedSeconds * 12) * 12)} strokeWidth={18} color={weaponColor} />
+    </Group>
+  );
+};
 
+const LaserBurst = ({ snapshot, width, height }: { readonly snapshot: GameSnapshot; readonly width: number; readonly height: number }) => {
+  if (!snapshot.laser) return null;
+  const shipX = width / 2 + snapshot.ship.x * width * 0.31;
+  const shipY = height * (0.84 + snapshot.ship.y * 0.045);
+  const target = project({
+    id: 'laser-target', kind: 'projectile', x: snapshot.laser.x, y: snapshot.laser.y, z: snapshot.laser.z,
+    radius: 0.01, color: '#FFFFFF',
+  }, width, height);
+  const offsets = snapshot.laser.beams >= 5 ? [-20, -10, 0, 10, 20] : snapshot.laser.beams >= 3 ? [-12, 0, 12] : [0];
   return (
     <>
-      {muzzles.map((offset, index) => {
-        const startX = shipX + offset * shipScale;
-        const startY = shipY - 74 * shipScale;
-        const tailX = lerp(startX, target.x, tailProgress);
-        const tailY = lerp(startY, target.y, tailProgress);
-        const headX = lerp(startX, target.x, progress);
-        const headY = lerp(startY, target.y, progress);
-        return (
-          <React.Fragment key={offset}>
-            <Circle cx={startX} cy={startY} r={22 * shipScale} color="#45E9FF55" />
-            <Circle cx={startX} cy={startY} r={8 * shipScale} color="#FFFFFF" />
-            <Line p1={vec(tailX, tailY)} p2={vec(headX, headY)} color="#30D9FF2E" strokeWidth={32} />
-            <Line p1={vec(tailX, tailY)} p2={vec(headX, headY)} color={index === 0 ? '#22E7FF' : '#9C65FF'} strokeWidth={14} />
-            <Line p1={vec(tailX, tailY)} p2={vec(headX, headY)} color="#FFFFFF" strokeWidth={4} />
-            <Circle cx={headX} cy={headY} r={19} color="#55EEFF66" />
-            <Circle cx={headX} cy={headY} r={7} color="#FFFFFF" />
-          </React.Fragment>
-        );
-      })}
-      {impact > 0 ? (
-        <Group transform={[{ translateX: target.x }, { translateY: target.y }, { scale: 0.45 + impact * 0.65 }, { rotate: progress * 2.2 }]}>
-          <Circle cx={0} cy={0} r={70} color="#56EFFF30" />
-          <Path path={impactStarPath} color="#FFF275" opacity={0.9 - impact * 0.35} />
-          <Circle cx={0} cy={0} r={22} color="#FFFFFF" />
-        </Group>
-      ) : null}
+      {offsets.map((offset) => (
+        <React.Fragment key={offset}>
+          <Line p1={vec(shipX + offset, shipY - 28)} p2={vec(target.x + offset * 0.3, target.y)} strokeWidth={10} color="#37D9FF44" />
+          <Line p1={vec(shipX + offset, shipY - 28)} p2={vec(target.x + offset * 0.3, target.y)} strokeWidth={4} color={snapshot.ship.weapon === 'rainbow-beam' ? '#FF7AF3' : '#F1FFFF'} />
+        </React.Fragment>
+      ))}
     </>
   );
 };
 
 export const GameCanvas = ({ snapshot }: Props) => {
   const { width, height } = useWindowDimensions();
-  const time = snapshot.elapsedSeconds;
-  const shipImage = useImage(require('../../assets/generated/ship-concept.webp'));
-  const asteroidImage = useImage(require('../../assets/generated/asteroid-neutral.webp'));
-  const entities = useMemo(
-    () => snapshot.entities
-      .map((entity) => project(entity, width, height))
-      .sort((a, b) => b.entity.z - a.entity.z),
-    [snapshot.entities, width, height],
+  const projected = useMemo(
+    () => snapshot.entities.map((entity) => project(entity, width, height)).sort((left, right) => right.entity.z - left.entity.z),
+    [height, snapshot.entities, width],
   );
-  const target = snapshot.laser
-    ? project({ id: 'laser', kind: 'answer', x: snapshot.laser.x, y: snapshot.laser.y, z: snapshot.laser.z, radius: 0.1, color: '#B9FF4A' }, width, height)
-    : null;
-  const shipScale = Math.min(width / 1536, height / 864) * 0.72;
-  const shipX = width / 2 + snapshot.ship.x * width * 0.31;
-  const shipY = height * (0.84 + snapshot.ship.y * 0.045);
+  const shakeX = Math.sin(snapshot.elapsedSeconds * 71) * snapshot.screenShake * 6;
+  const shakeY = Math.cos(snapshot.elapsedSeconds * 83) * snapshot.screenShake * 4;
 
   return (
     <Canvas style={styles.canvas}>
-      <StaticSpaceBackdrop width={width} height={height} />
-      <SpeedTunnel width={width} height={height} time={time} shipX={snapshot.ship.x} />
-      {entities.map((item) => item.entity.kind === 'answer'
-        ? (
-          <EnemyTarget
-            key={item.entity.id}
-            item={item}
-            locked={snapshot.lockTargetId === item.entity.id}
-            correct={snapshot.lockIsCorrect}
-            progress={snapshot.lockProgress}
-            time={time}
-            boss={snapshot.phase === 'boss'}
-          />
-        )
-        : item.entity.kind === 'hazard'
-          ? <Hazard key={item.entity.id} item={item} time={time} image={asteroidImage} />
-          : <Collectible key={item.entity.id} item={item} time={time} />)}
-      {target && snapshot.laser ? (
-        <LaserBolts target={target} shipX={shipX} shipY={shipY} shipScale={shipScale} seconds={snapshot.laser.seconds} />
-      ) : null}
-      <Ship snapshot={snapshot} width={width} height={height} time={time} image={shipImage} />
+      <Backdrop width={width} height={height} time={snapshot.elapsedSeconds} shipX={snapshot.ship.x} />
+      <Group transform={[{ translateX: shakeX }, { translateY: shakeY }]}>
+        {projected.map((item) => {
+          switch (item.entity.kind) {
+            case 'enemy': return <Enemy key={item.entity.id} item={item} snapshot={snapshot} />;
+            case 'hazard':
+            case 'enemyProjectile': return <Hazard key={item.entity.id} item={item} time={snapshot.elapsedSeconds} />;
+            case 'star': return <Collectible key={item.entity.id} item={item} time={snapshot.elapsedSeconds} />;
+            case 'powerUp': return <PowerUp key={item.entity.id} item={item} time={snapshot.elapsedSeconds} />;
+            case 'projectile': return <Projectile key={item.entity.id} item={item} />;
+            case 'explosion': return <Explosion key={item.entity.id} item={item} time={snapshot.elapsedSeconds} />;
+            case 'debris': return <Circle key={item.entity.id} cx={item.x} cy={item.y} r={Math.max(2, item.scale * 12)} color={item.entity.color} />;
+            case 'gate': return <Gate key={item.entity.id} item={item} locked={snapshot.lockTargetId === item.entity.id} />;
+            case 'ally': return <Ally key={item.entity.id} item={item} time={snapshot.elapsedSeconds} />;
+            default: return null;
+          }
+        })}
+        <LaserBurst snapshot={snapshot} width={width} height={height} />
+        <PlayerShip snapshot={snapshot} width={width} height={height} />
+      </Group>
       <Rect x={0} y={0} width={width} height={height} color="#02031308" />
     </Canvas>
   );
 };
 
-const styles = StyleSheet.create({ canvas: { ...StyleSheet.absoluteFillObject } });
+const styles = StyleSheet.create({ canvas: { flex: 1 } });

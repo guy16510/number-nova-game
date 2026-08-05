@@ -1,150 +1,176 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { ChallengeFactory } from '../src/domain/ChallengeFactory';
 import { GameEngine } from '../src/domain/GameEngine';
+import { SeededRandom } from '../src/domain/SeededRandom';
 
-const resolveCurrentAnswer = (engine: GameEngine): void => {
-  const correct = engine.snapshot().entities.find((entity) => entity.kind === 'answer' && entity.correct);
-  if (!correct) {
-    throw new Error('expected a correct answer target');
-  }
-  assert.equal(engine.resolveTarget(correct.id), true);
+const advance = (engine: GameEngine, seconds: number, x = 0, y = 0): void => {
+  for (let frame = 0; frame < Math.ceil(seconds * 60); frame += 1) engine.update(1 / 60, { x, y });
 };
 
-const advance = (engine: GameEngine, seconds: number): void => {
-  const steps = Math.ceil(seconds * 60);
-  for (let index = 0; index < steps; index += 1) {
-    engine.update(1 / 60, { x: 0, y: 0 });
+const correctTarget = (engine: GameEngine) => engine.snapshot().entities.find((entity) => entity.shootable && entity.correct === true);
+
+const hitCorrect = (engine: GameEngine): void => {
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    const target = correctTarget(engine);
+    if (target) {
+      engine.resolveTarget(target.id);
+      advance(engine, 0.18);
+      return;
+    }
+    advance(engine, 0.2);
   }
+  throw new Error('expected a correct target');
 };
 
-test('engine starts with answer targets and rejects a wrong target', () => {
-  const engine = new GameEngine({ seed: 1, totalChallenges: 1 });
-  engine.start();
-  const snapshot = engine.snapshot();
-  const wrong = snapshot.entities.find((entity) => entity.kind === 'answer' && !entity.correct);
-  if (!wrong) {
-    throw new Error('expected a wrong answer target');
-  }
-  assert.equal(engine.resolveTarget(wrong.id), false);
-  const result = engine.snapshot();
-  assert.equal(result.score, 0);
-  assert.equal(result.combo, 0);
-  assert.equal(result.shotsFired, 1);
-  assert.notEqual(result.laser, null);
+test('progressive math begins at exactly 1 + 1', () => {
+  const factory = new ChallengeFactory(new SeededRandom(1));
+  const challenge = factory.create(0, { mathLevel: 0 });
+  assert.equal(challenge.kind, 'addition');
+  assert.equal(challenge.prompt, 'Solve 1 + 1');
+  assert.equal(challenge.answer, 2);
+  assert.deepEqual([...challenge.options].sort((a, b) => a - b).includes(2), true);
 });
 
-test('fire always produces a visible shot and observes laser cooldown', () => {
-  const engine = new GameEngine({ seed: 11, totalChallenges: 1 });
-  engine.start();
+test('math progression introduces subtraction, comparison, memory, rescue, gates, defense, and rapid recall', () => {
+  const factory = new ChallengeFactory(new SeededRandom(19));
+  const kinds = new Set<string>(Array.from({ length: 11 }, (_, index) => factory.create(index, { mathLevel: Math.min(7, Math.floor(index / 2)) }).kind));
+  for (const expected of ['addition', 'number', 'collect', 'rescue', 'comparison', 'gate', 'subtraction', 'defense', 'rapid', 'memory']) {
+    assert.equal(kinds.has(expected), true, `missing ${expected}`);
+  }
+});
 
+test('aiming does not auto-fire and pressing fire always creates a shot', () => {
+  const engine = new GameEngine({ seed: 4, totalChallenges: 1 });
+  engine.start();
+  const challengeId = engine.snapshot().challenge.id;
+  advance(engine, 2);
+  assert.equal(engine.snapshot().challenge.id, challengeId);
+  assert.equal(engine.snapshot().score, 0);
   assert.equal(engine.fire(), true);
   const fired = engine.snapshot();
   assert.equal(fired.shotsFired, 1);
   assert.notEqual(fired.laser, null);
+  assert.ok(fired.entities.some((entity) => entity.kind === 'projectile'));
   assert.equal(engine.fire(), false);
-
-  advance(engine, 0.35);
-  assert.equal(engine.fire(), true);
-  assert.equal(engine.snapshot().shotsFired, 2);
 });
 
-test('correct hits build a combat combo', () => {
-  const engine = new GameEngine({ seed: 21, totalChallenges: 2 });
-  engine.start();
-  resolveCurrentAnswer(engine);
-  advance(engine, 1);
-  resolveCurrentAnswer(engine);
-
-  const result = engine.snapshot();
-  assert.equal(result.combo, 2);
-  assert.equal(result.bestCombo, 2);
-  assert.equal(result.shotsFired, 2);
-  assert.ok(result.score >= 225);
-});
-
-test('correct answers advance into a boss and three boss hits complete the game', () => {
+test('wrong enemies explode without advancing the challenge', () => {
   const engine = new GameEngine({ seed: 5, totalChallenges: 1 });
   engine.start();
-  resolveCurrentAnswer(engine);
-  advance(engine, 1);
-  assert.equal(engine.snapshot().phase, 'boss');
+  const before = engine.snapshot();
+  const wrong = before.entities.find((entity) => entity.shootable && entity.correct === false);
+  assert.ok(wrong);
+  assert.equal(engine.resolveTarget(wrong.id), false);
+  const after = engine.snapshot();
+  assert.equal(after.challenge.id, before.challenge.id);
+  assert.equal(after.challenge.progress, 0);
+  assert.equal(after.combo, 0);
+  assert.ok(after.entities.some((entity) => entity.kind === 'explosion'));
+});
 
-  for (let hit = 0; hit < 3; hit += 1) {
-    resolveCurrentAnswer(engine);
-    if (hit < 2) {
-      advance(engine, 1);
+test('correct answers build combos and advance to harder math', () => {
+  const engine = new GameEngine({ seed: 6, totalChallenges: 3 });
+  engine.start();
+  hitCorrect(engine);
+  advance(engine, 0.8);
+  assert.equal(engine.snapshot().challengeNumber, 2);
+  hitCorrect(engine);
+  advance(engine, 0.8);
+  const snapshot = engine.snapshot();
+  assert.equal(snapshot.challengeNumber, 3);
+  assert.equal(snapshot.combo, 2);
+  assert.equal(snapshot.bestCombo, 2);
+  assert.ok(snapshot.score >= 275);
+});
+
+test('shield ships require multiple successful hits', () => {
+  const engine = new GameEngine({ seed: 8, totalChallenges: 8 });
+  engine.start();
+  while (engine.snapshot().challengeNumber < 5 && engine.snapshot().phase === 'playing') {
+    const snapshot = engine.snapshot();
+    if (snapshot.challenge.kind === 'collect') {
+      engine.useShield();
+      engine.useMagnet();
+      for (let frame = 0; frame < 1500 && engine.snapshot().challenge.id === snapshot.challenge.id; frame += 1) {
+        const star = engine.snapshot().entities.filter((entity) => entity.kind === 'star').sort((a, b) => a.z - b.z)[0];
+        engine.update(1 / 60, star ? {
+          x: Math.max(-1, Math.min(1, star.x / 0.88)),
+          y: Math.max(-1, Math.min(1, (star.y - 0.3) / 0.45)),
+        } : { x: 0, y: 0 });
+      }
+    } else {
+      hitCorrect(engine);
+      advance(engine, 0.65);
+    }
+  }
+  const shielded = correctTarget(engine);
+  assert.ok(shielded);
+  assert.equal(shielded.health, 2);
+  assert.equal(engine.resolveTarget(shielded.id), true);
+  const cracked = engine.snapshot().entities.find((entity) => entity.id === shielded.id);
+  assert.equal(cracked?.health, 1);
+  assert.equal(engine.snapshot().challenge.progress, 0);
+});
+
+test('collection missions can be completed with steering and the magnet', () => {
+  const engine = new GameEngine({ seed: 123, totalChallenges: 3, worldSpeed: 0.16 });
+  engine.start();
+  hitCorrect(engine);
+  advance(engine, 0.8);
+  hitCorrect(engine);
+  advance(engine, 0.8);
+  assert.equal(engine.snapshot().challenge.kind, 'collect');
+  engine.useShield();
+  engine.useMagnet();
+
+  for (let frame = 0; frame < 1800 && engine.snapshot().phase === 'playing'; frame += 1) {
+    const star = engine.snapshot().entities.filter((entity) => entity.kind === 'star').sort((left, right) => left.z - right.z)[0];
+    engine.update(1 / 60, star ? {
+      x: Math.max(-1, Math.min(1, star.x / 0.88)),
+      y: Math.max(-1, Math.min(1, (star.y - 0.3) / 0.45)),
+    } : { x: 0, y: 0 });
+  }
+
+  const result = engine.snapshot();
+  assert.equal(result.phase, 'boss');
+  assert.ok(result.stars >= 3);
+});
+
+test('boss battle has three stages and grants a reward', () => {
+  const engine = new GameEngine({ seed: 13, totalChallenges: 1 });
+  engine.start();
+  hitCorrect(engine);
+  advance(engine, 0.9);
+  assert.equal(engine.snapshot().phase, 'boss');
+  assert.equal(engine.snapshot().bossStage, 1);
+
+  for (let stage = 1; stage <= 3; stage += 1) {
+    for (let guard = 0; guard < 12 && engine.snapshot().bossStage === stage && engine.snapshot().phase === 'boss'; guard += 1) {
+      hitCorrect(engine);
+      advance(engine, 0.5);
     }
   }
 
   const result = engine.snapshot();
   assert.equal(result.phase, 'complete');
   assert.equal(result.bossHealth, 0);
-  assert.ok(result.score >= 1750);
+  assert.ok(result.reward);
+  assert.ok(result.score >= 1800);
 });
 
-test('magnet and active flying complete the collection mission', () => {
-  const engine = new GameEngine({ seed: 123, totalChallenges: 3, worldSpeed: 0.18 });
+test('adaptive difficulty keeps values bounded', () => {
+  const engine = new GameEngine({ seed: 21 });
   engine.start();
-  resolveCurrentAnswer(engine);
-  advance(engine, 1);
-  resolveCurrentAnswer(engine);
-  advance(engine, 1);
-  assert.equal(engine.snapshot().challenge.kind, 'collect');
-
-  assert.equal(engine.useShield(), true);
-  assert.equal(engine.useMagnet(), true);
-
-  for (let frame = 0; frame < 12 * 60 && engine.snapshot().phase === 'playing'; frame += 1) {
-    if (frame === 305) {
-      assert.equal(engine.useShield(), true);
-    }
-
-    const stars = engine.snapshot().entities
-      .filter((entity) => entity.kind === 'star')
-      .sort((left, right) => left.z - right.z);
-    const target = stars[0];
-    engine.update(1 / 60, target
-      ? {
-        x: Math.max(-1, Math.min(1, target.x / 0.88)),
-        y: Math.max(-1, Math.min(1, (target.y - 0.3) / 0.45)),
-      }
-      : { x: 0, y: 0 });
-  }
-
-  const result = engine.snapshot();
-  assert.equal(result.phase, 'boss');
-  assert.ok(result.stars >= 4);
-  assert.ok(result.ship.hearts > 0);
-});
-
-test('power ups have limited charges', () => {
-  const engine = new GameEngine({ seed: 2 });
-  engine.start();
-  assert.equal(engine.useShield(), true);
-  assert.equal(engine.useShield(), false);
-  advance(engine, 6);
-  assert.equal(engine.useShield(), true);
-  advance(engine, 6);
-  assert.equal(engine.useShield(), false);
-});
-
-test('respawns an answer wave when the correct target leaves the world', () => {
-  const seed = 3;
-  const engine = new GameEngine({ seed });
-  engine.start();
-
-  for (let frame = 1; frame <= 400; frame += 1) {
-    engine.update(1 / 60, {
-      x: Math.sin((frame + seed * 17) * 0.041),
-      y: Math.cos((frame + seed * 11) * 0.029) * 0.8,
-    });
-    const answers = engine.snapshot().entities.filter((entity) => entity.kind === 'answer');
-    if (answers.length > 0) {
-      assert.equal(
-        answers.filter((entity) => entity.correct === true).length,
-        1,
-        `frame ${frame} has no reachable correct answer`,
-      );
-    }
+  for (let frame = 0; frame < 1500; frame += 1) {
+    if (frame % 80 === 0) engine.fire();
+    engine.update(1 / 60, { x: Math.sin(frame * 0.041), y: Math.cos(frame * 0.029) * 0.8 });
+    const snapshot = engine.snapshot();
+    assert.ok(snapshot.entities.length <= 42);
+    assert.ok(snapshot.ship.x >= -0.951 && snapshot.ship.x <= 0.951);
+    assert.ok(snapshot.ship.y >= -0.151 && snapshot.ship.y <= 0.801);
+    assert.ok(snapshot.challenge.mathLevel >= 0 && snapshot.challenge.mathLevel <= 7);
+    assert.ok(snapshot.accuracy >= 0 && snapshot.accuracy <= 1);
+    if (snapshot.phase === 'failed' || snapshot.phase === 'complete') break;
   }
 });

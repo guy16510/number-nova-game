@@ -4,6 +4,7 @@ import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
 import type { GameSnapshot } from './src/domain/types';
 import {
+  EMPTY_PROGRESS,
   ExpoProgressRepository,
   type PlayerProgress,
 } from './src/infrastructure/ProgressRepository';
@@ -16,13 +17,6 @@ void SplashScreen.preventAutoHideAsync();
 SplashScreen.setOptions({ duration: 500, fade: true });
 
 type Screen = 'menu' | 'game' | 'results' | 'parents';
-
-const EMPTY_PROGRESS: PlayerProgress = {
-  highScore: 0,
-  bestStars: 0,
-  missionsCompleted: 0,
-  gamesPlayed: 0,
-};
 
 export default function App() {
   const repository = useMemo(() => new ExpoProgressRepository(), []);
@@ -37,13 +31,9 @@ export default function App() {
     const load = async () => {
       try {
         const stored = await repository.load();
-        if (mounted) {
-          setProgress(stored);
-        }
+        if (mounted) setProgress(stored);
       } catch {
-        if (mounted) {
-          setProgress(EMPTY_PROGRESS);
-        }
+        if (mounted) setProgress(EMPTY_PROGRESS);
       } finally {
         if (mounted) {
           setReady(true);
@@ -63,11 +53,7 @@ export default function App() {
 
   const finishGame = useCallback(async (snapshot: GameSnapshot) => {
     setResult(snapshot);
-    const nextProgress = await repository.recordGame(
-      snapshot.score,
-      snapshot.stars,
-      snapshot.phase === 'complete',
-    );
+    const nextProgress = await repository.recordGame(snapshot);
     setProgress(nextProgress);
     setScreen('results');
   }, [repository]);
@@ -77,16 +63,12 @@ export default function App() {
     setProgress(EMPTY_PROGRESS);
   }, [repository]);
 
-  if (!ready) {
-    return null;
-  }
+  if (!ready) return null;
 
   return (
     <View style={styles.root}>
       <StatusBar hidden />
-      {screen === 'menu' ? (
-        <MenuScreen progress={progress} onPlay={startGame} onParents={() => setScreen('parents')} />
-      ) : null}
+      {screen === 'menu' ? <MenuScreen progress={progress} onPlay={startGame} onParents={() => setScreen('parents')} /> : null}
       {screen === 'game' ? (
         <GameScreen
           key={gameSeed}
@@ -95,16 +77,10 @@ export default function App() {
           onFinish={(snapshot) => { void finishGame(snapshot); }}
         />
       ) : null}
-      {screen === 'results' && result ? (
-        <ResultsScreen snapshot={result} onPlayAgain={startGame} onMenu={() => setScreen('menu')} />
-      ) : null}
-      {screen === 'parents' ? (
-        <ParentScreen progress={progress} onReset={() => { void resetProgress(); }} onClose={() => setScreen('menu')} />
-      ) : null}
+      {screen === 'results' && result ? <ResultsScreen snapshot={result} onPlayAgain={startGame} onMenu={() => setScreen('menu')} /> : null}
+      {screen === 'parents' ? <ParentScreen progress={progress} onReset={() => { void resetProgress(); }} onClose={() => setScreen('menu')} /> : null}
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#02031A' },
-});
+const styles = StyleSheet.create({ root: { flex: 1, backgroundColor: '#02031A' } });

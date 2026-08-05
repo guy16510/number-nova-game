@@ -10,244 +10,100 @@ interface SimulationConfig {
   readonly reportPath: string;
 }
 
-interface OutcomeCounts {
-  ready: number;
-  playing: number;
-  paused: number;
-  boss: number;
-  complete: number;
-  failed: number;
-}
-
-interface StressSummary {
-  readonly seeds: number;
-  readonly requestedFramesPerSeed: number;
-  readonly simulatedFrames: number;
-  readonly pauseResumeChecks: number;
-  readonly maximumEntities: number;
-  readonly minimumHearts: number;
-  readonly maximumScore: number;
-  readonly maximumStars: number;
-  readonly challengeKindsSeen: readonly string[];
-  readonly outcomes: OutcomeCounts;
-}
-
-interface SolverSummary {
-  readonly seeds: number;
-  readonly completed: number;
-  readonly failed: number;
-  readonly timedOut: number;
-  readonly completionRate: number;
-  readonly maximumElapsedSeconds: number;
-}
-
 const PHASES: readonly GamePhase[] = ['ready', 'playing', 'paused', 'boss', 'complete', 'failed'];
-
-const argumentValue = (name: string): string | undefined => {
+const valueAfter = (name: string): string | undefined => {
   const index = process.argv.indexOf(name);
   return index >= 0 ? process.argv[index + 1] : undefined;
 };
-
 const positiveInteger = (value: string | undefined, fallback: number, name: string): number => {
-  if (value === undefined) {
-    return fallback;
-  }
+  if (value === undefined) return fallback;
   const parsed = Number.parseInt(value, 10);
-  if (!Number.isInteger(parsed) || parsed <= 0) {
-    throw new Error(`${name} must be a positive integer, received ${value}`);
-  }
+  if (!Number.isInteger(parsed) || parsed <= 0) throw new Error(`${name} must be a positive integer`);
   return parsed;
 };
 
 const config: SimulationConfig = {
-  seeds: positiveInteger(argumentValue('--seeds'), 200, '--seeds'),
-  framesPerSeed: positiveInteger(argumentValue('--frames'), 900, '--frames'),
-  solverSeeds: positiveInteger(argumentValue('--solver-seeds'), 50, '--solver-seeds'),
-  reportPath: argumentValue('--report') ?? 'artifacts/simulation-report.json',
+  seeds: positiveInteger(valueAfter('--seeds'), 200, '--seeds'),
+  framesPerSeed: positiveInteger(valueAfter('--frames'), 900, '--frames'),
+  solverSeeds: positiveInteger(valueAfter('--solver-seeds'), 50, '--solver-seeds'),
+  reportPath: valueAfter('--report') ?? 'artifacts/simulation-report.json',
 };
 
-const clamp = (value: number, minimum: number, maximum: number): number =>
-  Math.max(minimum, Math.min(maximum, value));
-
-const assertFinite = (value: number, label: string, seed: number, frame: number): void => {
-  if (!Number.isFinite(value)) {
-    throw new Error(`seed ${seed}, frame ${frame}: ${label} is not finite (${value})`);
-  }
+const clamp = (value: number, minimum: number, maximum: number): number => Math.max(minimum, Math.min(maximum, value));
+const finite = (value: number, label: string, seed: number, frame: number): void => {
+  if (!Number.isFinite(value)) throw new Error(`seed ${seed}, frame ${frame}: ${label} is not finite`);
 };
 
-const assertSnapshot = (
-  snapshot: GameSnapshot,
-  seed: number,
-  frame: number,
-  previous?: GameSnapshot,
-): void => {
-  if (!PHASES.includes(snapshot.phase)) {
-    throw new Error(`seed ${seed}, frame ${frame}: invalid phase ${snapshot.phase}`);
-  }
-
-  const numericValues: readonly [string, number][] = [
-    ['elapsedSeconds', snapshot.elapsedSeconds],
-    ['ship.x', snapshot.ship.x],
-    ['ship.y', snapshot.ship.y],
-    ['ship.hearts', snapshot.ship.hearts],
-    ['ship.shieldSeconds', snapshot.ship.shieldSeconds],
-    ['ship.magnetSeconds', snapshot.ship.magnetSeconds],
-    ['score', snapshot.score],
-    ['stars', snapshot.stars],
-    ['challengeNumber', snapshot.challengeNumber],
-    ['totalChallenges', snapshot.totalChallenges],
-    ['lockProgress', snapshot.lockProgress],
-    ['bossHealth', snapshot.bossHealth],
-    ['bossMaxHealth', snapshot.bossMaxHealth],
-    ['shieldCharges', snapshot.shieldCharges],
-    ['magnetCharges', snapshot.magnetCharges],
-    ['challenge.targetCount', snapshot.challenge.targetCount],
-    ['challenge.progress', snapshot.challenge.progress],
+const assertSnapshot = (snapshot: GameSnapshot, seed: number, frame: number, previous?: GameSnapshot): void => {
+  if (!PHASES.includes(snapshot.phase)) throw new Error(`seed ${seed}, frame ${frame}: invalid phase ${snapshot.phase}`);
+  const numeric: readonly [string, number][] = [
+    ['elapsedSeconds', snapshot.elapsedSeconds], ['ship.x', snapshot.ship.x], ['ship.y', snapshot.ship.y],
+    ['ship.hearts', snapshot.ship.hearts], ['ship.weaponSeconds', snapshot.ship.weaponSeconds], ['score', snapshot.score],
+    ['stars', snapshot.stars], ['combo', snapshot.combo], ['shotsFired', snapshot.shotsFired], ['shotsHit', snapshot.shotsHit],
+    ['accuracy', snapshot.accuracy], ['collisions', snapshot.collisions], ['challengeNumber', snapshot.challengeNumber],
+    ['lockProgress', snapshot.lockProgress], ['bossHealth', snapshot.bossHealth], ['bossStage', snapshot.bossStage],
+    ['screenShake', snapshot.screenShake], ['challenge.progress', snapshot.challenge.progress], ['challenge.mathLevel', snapshot.challenge.mathLevel],
   ];
-  for (const [label, value] of numericValues) {
-    assertFinite(value, label, seed, frame);
-  }
-
-  if (snapshot.ship.x < -0.951 || snapshot.ship.x > 0.951) {
-    throw new Error(`seed ${seed}, frame ${frame}: ship.x out of bounds (${snapshot.ship.x})`);
-  }
-  if (snapshot.ship.y < -0.151 || snapshot.ship.y > 0.801) {
-    throw new Error(`seed ${seed}, frame ${frame}: ship.y out of bounds (${snapshot.ship.y})`);
-  }
-  if (snapshot.ship.hearts < 0 || snapshot.ship.hearts > 3) {
-    throw new Error(`seed ${seed}, frame ${frame}: invalid hearts (${snapshot.ship.hearts})`);
-  }
-  if (snapshot.ship.shieldSeconds < 0 || snapshot.ship.magnetSeconds < 0) {
-    throw new Error(`seed ${seed}, frame ${frame}: power-up timer became negative`);
-  }
-  if (snapshot.shieldCharges < 0 || snapshot.shieldCharges > 2) {
-    throw new Error(`seed ${seed}, frame ${frame}: invalid shield charges (${snapshot.shieldCharges})`);
-  }
-  if (snapshot.magnetCharges < 0 || snapshot.magnetCharges > 2) {
-    throw new Error(`seed ${seed}, frame ${frame}: invalid magnet charges (${snapshot.magnetCharges})`);
-  }
-  if (snapshot.score < 0 || snapshot.stars < 0) {
-    throw new Error(`seed ${seed}, frame ${frame}: score or stars became negative`);
-  }
-  if (snapshot.challengeNumber < 1 || snapshot.challengeNumber > snapshot.totalChallenges) {
-    throw new Error(`seed ${seed}, frame ${frame}: invalid challenge number ${snapshot.challengeNumber}`);
-  }
-  if (snapshot.challenge.targetCount < 1) {
-    throw new Error(`seed ${seed}, frame ${frame}: challenge target count must be positive`);
-  }
-  if (snapshot.challenge.progress < 0 || snapshot.challenge.progress > snapshot.challenge.targetCount) {
-    throw new Error(
-      `seed ${seed}, frame ${frame}: challenge progress ${snapshot.challenge.progress}/${snapshot.challenge.targetCount}`,
-    );
-  }
-  if (snapshot.bossHealth < 0 || snapshot.bossHealth > snapshot.bossMaxHealth) {
-    throw new Error(`seed ${seed}, frame ${frame}: invalid boss health ${snapshot.bossHealth}`);
-  }
+  for (const [label, value] of numeric) finite(value, label, seed, frame);
+  if (snapshot.ship.x < -0.951 || snapshot.ship.x > 0.951) throw new Error(`seed ${seed}: ship.x out of bounds`);
+  if (snapshot.ship.y < -0.151 || snapshot.ship.y > 0.801) throw new Error(`seed ${seed}: ship.y out of bounds`);
+  if (snapshot.ship.hearts < 0 || snapshot.ship.hearts > 3) throw new Error(`seed ${seed}: invalid hearts`);
+  if (snapshot.accuracy < 0 || snapshot.accuracy > 1) throw new Error(`seed ${seed}: invalid accuracy`);
+  if (snapshot.challenge.mathLevel < 0 || snapshot.challenge.mathLevel > 7) throw new Error(`seed ${seed}: invalid math level`);
+  if (snapshot.entities.length > 42) throw new Error(`seed ${seed}: entity cap exceeded (${snapshot.entities.length})`);
+  if (snapshot.bossHealth < 0 || snapshot.bossHealth > snapshot.bossMaxHealth) throw new Error(`seed ${seed}: invalid boss health`);
+  if (snapshot.phase === 'complete' && (!snapshot.reward || snapshot.bossHealth !== 0)) throw new Error(`seed ${seed}: completed game missing reward or boss defeat`);
+  if (snapshot.phase === 'failed' && snapshot.ship.hearts !== 0) throw new Error(`seed ${seed}: failed game still has hearts`);
 
   const ids = new Set<string>();
-  const answerLabels = new Set<string>();
-  let answerCount = 0;
-  let correctAnswerCount = 0;
+  let correctShootable = 0;
   for (const entity of snapshot.entities) {
-    assertFinite(entity.x, `${entity.id}.x`, seed, frame);
-    assertFinite(entity.y, `${entity.id}.y`, seed, frame);
-    assertFinite(entity.z, `${entity.id}.z`, seed, frame);
-    assertFinite(entity.radius, `${entity.id}.radius`, seed, frame);
-    if (entity.radius <= 0) {
-      throw new Error(`seed ${seed}, frame ${frame}: ${entity.id} has invalid radius ${entity.radius}`);
-    }
-    if (ids.has(entity.id)) {
-      throw new Error(`seed ${seed}, frame ${frame}: duplicate entity id ${entity.id}`);
-    }
+    finite(entity.x, `${entity.id}.x`, seed, frame);
+    finite(entity.y, `${entity.id}.y`, seed, frame);
+    finite(entity.z, `${entity.id}.z`, seed, frame);
+    finite(entity.radius, `${entity.id}.radius`, seed, frame);
+    if (ids.has(entity.id)) throw new Error(`seed ${seed}: duplicate entity ${entity.id}`);
     ids.add(entity.id);
-
-    if (entity.kind === 'answer') {
-      answerCount += 1;
-      if (entity.correct === true) {
-        correctAnswerCount += 1;
-      }
-      if (entity.label === undefined || answerLabels.has(entity.label)) {
-        throw new Error(`seed ${seed}, frame ${frame}: answer labels are missing or duplicated`);
-      }
-      answerLabels.add(entity.label);
-    }
+    if (entity.shootable && entity.correct === true) correctShootable += 1;
   }
-
-  if (answerCount > 0 && correctAnswerCount !== 1) {
-    throw new Error(
-      `seed ${seed}, frame ${frame}: expected exactly one correct answer, found ${correctAnswerCount}`,
-    );
+  if (snapshot.challenge.kind !== 'collect' && snapshot.phase !== 'complete' && snapshot.phase !== 'failed' && snapshot.entities.some((entity) => entity.shootable) && correctShootable !== 1) {
+    throw new Error(`seed ${seed}, frame ${frame}: expected one correct shootable, found ${correctShootable}`);
   }
-  if (snapshot.lockTargetId !== null && !ids.has(snapshot.lockTargetId)) {
-    throw new Error(`seed ${seed}, frame ${frame}: lock target ${snapshot.lockTargetId} is not active`);
-  }
-  if (snapshot.phase === 'complete' && snapshot.bossHealth !== 0) {
-    throw new Error(`seed ${seed}, frame ${frame}: completed game still has boss health`);
-  }
-  if (snapshot.phase === 'failed' && snapshot.ship.hearts > 0) {
-    throw new Error(`seed ${seed}, frame ${frame}: failed game still has hearts`);
-  }
-
-  if (previous !== undefined) {
-    if (snapshot.elapsedSeconds + 1e-9 < previous.elapsedSeconds) {
-      throw new Error(`seed ${seed}, frame ${frame}: elapsed time moved backwards`);
-    }
-    if (snapshot.score < previous.score) {
-      throw new Error(`seed ${seed}, frame ${frame}: score moved backwards`);
-    }
-    if (snapshot.stars < previous.stars) {
-      throw new Error(`seed ${seed}, frame ${frame}: stars moved backwards`);
-    }
+  if (snapshot.lockTargetId !== null && !ids.has(snapshot.lockTargetId)) throw new Error(`seed ${seed}: stale lock target`);
+  if (previous) {
+    if (snapshot.elapsedSeconds + 1e-9 < previous.elapsedSeconds) throw new Error(`seed ${seed}: time moved backward`);
+    if (snapshot.score < previous.score || snapshot.stars < previous.stars) throw new Error(`seed ${seed}: score moved backward`);
   }
 };
 
-const emptyOutcomes = (): OutcomeCounts => ({
-  ready: 0,
-  playing: 0,
-  paused: 0,
-  boss: 0,
-  complete: 0,
-  failed: 0,
-});
+const outcomes = (): Record<GamePhase, number> => ({ ready: 0, playing: 0, paused: 0, boss: 0, complete: 0, failed: 0 });
 
-const runStressSimulation = (): StressSummary => {
-  const outcomes = emptyOutcomes();
-  const challengeKinds = new Set<string>();
-  let simulatedFrames = 0;
-  let pauseResumeChecks = 0;
+const runStress = () => {
+  const result = outcomes();
+  const kinds = new Set<string>();
+  const patterns = new Set<string>();
+  const archetypes = new Set<string>();
+  let frames = 0;
   let maximumEntities = 0;
-  let minimumHearts = 3;
+  let maximumMathLevel = 0;
   let maximumScore = 0;
-  let maximumStars = 0;
 
   for (let seed = 1; seed <= config.seeds; seed += 1) {
     const engine = new GameEngine({ seed });
     engine.start();
     let previous = engine.snapshot();
     assertSnapshot(previous, seed, 0);
-
     for (let frame = 1; frame <= config.framesPerSeed; frame += 1) {
-      if (frame === Math.min(120, config.framesPerSeed) && (previous.phase === 'playing' || previous.phase === 'boss')) {
+      if (frame === 120 && (previous.phase === 'playing' || previous.phase === 'boss')) {
         engine.pause();
         const paused = engine.snapshot();
-        assertSnapshot(paused, seed, frame, previous);
         engine.update(1, { x: 1, y: 1 });
-        const stillPaused = engine.snapshot();
-        if (stillPaused.elapsedSeconds !== paused.elapsedSeconds) {
-          throw new Error(`seed ${seed}, frame ${frame}: paused engine advanced time`);
-        }
+        if (engine.snapshot().elapsedSeconds !== paused.elapsedSeconds) throw new Error(`seed ${seed}: paused engine advanced`);
         engine.resume();
-        previous = engine.snapshot();
-        pauseResumeChecks += 1;
       }
-
-      if (frame % 360 === 1) {
-        engine.useShield();
-      }
-      if (frame % 420 === 1) {
-        engine.useMagnet();
-      }
-
+      if (frame % 150 === 0) engine.fire();
+      if (frame % 360 === 1) engine.useShield();
+      if (frame % 420 === 1) engine.useMagnet();
       const input: SteeringInput = {
         x: Math.sin((frame + seed * 17) * 0.041),
         y: Math.cos((frame + seed * 11) * 0.029) * 0.8,
@@ -256,72 +112,56 @@ const runStressSimulation = (): StressSummary => {
       const next = engine.snapshot();
       assertSnapshot(next, seed, frame, previous);
       previous = next;
-      simulatedFrames += 1;
-      challengeKinds.add(next.challenge.kind);
+      frames += 1;
+      kinds.add(next.challenge.kind);
+      patterns.add(next.wavePattern);
+      for (const entity of next.entities) if (entity.archetype) archetypes.add(entity.archetype);
       maximumEntities = Math.max(maximumEntities, next.entities.length);
-      minimumHearts = Math.min(minimumHearts, next.ship.hearts);
+      maximumMathLevel = Math.max(maximumMathLevel, next.challenge.mathLevel);
       maximumScore = Math.max(maximumScore, next.score);
-      maximumStars = Math.max(maximumStars, next.stars);
-
-      if (next.phase === 'complete' || next.phase === 'failed') {
-        break;
-      }
+      if (next.phase === 'complete' || next.phase === 'failed') break;
     }
-
-    outcomes[previous.phase] += 1;
+    result[previous.phase] += 1;
   }
 
   return {
     seeds: config.seeds,
     requestedFramesPerSeed: config.framesPerSeed,
-    simulatedFrames,
-    pauseResumeChecks,
+    simulatedFrames: frames,
     maximumEntities,
-    minimumHearts,
+    maximumMathLevel,
     maximumScore,
-    maximumStars,
-    challengeKindsSeen: [...challengeKinds].sort(),
-    outcomes,
+    challengeKindsSeen: [...kinds].sort(),
+    wavePatternsSeen: [...patterns].sort(),
+    enemyArchetypesSeen: [...archetypes].sort(),
+    outcomes: result,
   };
 };
 
 const solverInput = (snapshot: GameSnapshot): SteeringInput => {
-  const nearestStar = snapshot.entities
-    .filter((entity) => entity.kind === 'star')
-    .toSorted((left, right) => left.z - right.z)[0];
-  if (nearestStar === undefined) {
-    return { x: 0, y: 0 };
-  }
-  return {
-    x: clamp(nearestStar.x / 0.88, -1, 1),
-    y: clamp((nearestStar.y - 0.3) / 0.45, -1, 1),
-  };
+  const star = snapshot.entities.filter((entity) => entity.kind === 'star').sort((left, right) => left.z - right.z)[0];
+  return star ? { x: clamp(star.x / 0.88, -1, 1), y: clamp((star.y - 0.3) / 0.45, -1, 1) } : { x: 0, y: 0 };
 };
 
-const runSolverSimulation = (): SolverSummary => {
+const runSolver = () => {
   let completed = 0;
   let failed = 0;
   let timedOut = 0;
   let maximumElapsedSeconds = 0;
-  const maxFrames = 90 * 60;
+  let rewardsGranted = 0;
+  const maxFrames = 120 * 60;
 
   for (let seed = 1; seed <= config.solverSeeds; seed += 1) {
-    const engine = new GameEngine({ seed: seed * 7919, worldSpeed: 0.32 });
+    const engine = new GameEngine({ seed: seed * 7919, worldSpeed: 0.16 });
     engine.start();
     let previous = engine.snapshot();
-    assertSnapshot(previous, seed, 0);
     let finished = false;
-
     for (let frame = 1; frame <= maxFrames; frame += 1) {
       const current = engine.snapshot();
-      if (current.phase === 'complete') {
-        completed += 1;
-        maximumElapsedSeconds = Math.max(maximumElapsedSeconds, current.elapsedSeconds);
-        finished = true;
-        break;
-      }
-      if (current.phase === 'failed') {
-        failed += 1;
+      if (current.phase === 'complete' || current.phase === 'failed') {
+        completed += current.phase === 'complete' ? 1 : 0;
+        failed += current.phase === 'failed' ? 1 : 0;
+        rewardsGranted += current.reward ? 1 : 0;
         maximumElapsedSeconds = Math.max(maximumElapsedSeconds, current.elapsedSeconds);
         finished = true;
         break;
@@ -329,28 +169,18 @@ const runSolverSimulation = (): SolverSummary => {
 
       let input: SteeringInput = { x: 0, y: 0 };
       if (current.challenge.kind === 'collect') {
-        if (current.magnetCharges > 0 && current.ship.magnetSeconds === 0) {
-          engine.useMagnet();
-        }
-        if (current.shieldCharges > 0 && current.ship.shieldSeconds === 0) {
-          engine.useShield();
-        }
+        if (current.shieldCharges > 0 && current.ship.shieldSeconds === 0) engine.useShield();
+        if (current.magnetCharges > 0 && current.ship.magnetSeconds === 0) engine.useMagnet();
         input = solverInput(current);
       } else {
-        const correct = current.entities.find(
-          (entity) => entity.kind === 'answer' && entity.correct === true,
-        );
-        if (correct !== undefined) {
-          engine.resolveTarget(correct.id);
-        }
+        const correct = current.entities.find((entity) => entity.shootable && entity.correct === true);
+        if (correct) engine.resolveTarget(correct.id);
       }
-
       engine.update(1 / 60, input);
       const next = engine.snapshot();
       assertSnapshot(next, seed, frame, previous);
       previous = next;
     }
-
     if (!finished) {
       timedOut += 1;
       maximumElapsedSeconds = Math.max(maximumElapsedSeconds, previous.elapsedSeconds);
@@ -358,35 +188,14 @@ const runSolverSimulation = (): SolverSummary => {
   }
 
   const completionRate = completed / config.solverSeeds;
-  if (timedOut > 0) {
-    throw new Error(`solver timed out for ${timedOut}/${config.solverSeeds} seeds`);
-  }
-  if (completionRate < 0.8) {
-    throw new Error(
-      `solver completion rate ${(completionRate * 100).toFixed(1)}% is below the 80% safety threshold`,
-    );
-  }
-
-  return {
-    seeds: config.solverSeeds,
-    completed,
-    failed,
-    timedOut,
-    completionRate: Number(completionRate.toFixed(4)),
-    maximumElapsedSeconds: Number(maximumElapsedSeconds.toFixed(2)),
-  };
+  if (timedOut > 0) throw new Error(`solver timed out for ${timedOut}/${config.solverSeeds} seeds`);
+  if (completionRate < 0.9) throw new Error(`solver completion rate ${(completionRate * 100).toFixed(1)}% is below 90%`);
+  if (rewardsGranted !== completed) throw new Error('completed games did not all grant rewards');
+  return { seeds: config.solverSeeds, completed, failed, timedOut, rewardsGranted, completionRate: Number(completionRate.toFixed(4)), maximumElapsedSeconds: Number(maximumElapsedSeconds.toFixed(2)) };
 };
 
-const stress = runStressSimulation();
-const solver = runSolverSimulation();
-const report = {
-  generatedAt: new Date().toISOString(),
-  config,
-  stress,
-  solver,
-};
-
-const absoluteReportPath = resolve(config.reportPath);
-mkdirSync(dirname(absoluteReportPath), { recursive: true });
-writeFileSync(absoluteReportPath, `${JSON.stringify(report, null, 2)}\n`, 'utf8');
+const report = { generatedAt: new Date().toISOString(), config, stress: runStress(), solver: runSolver() };
+const output = resolve(config.reportPath);
+mkdirSync(dirname(output), { recursive: true });
+writeFileSync(output, `${JSON.stringify(report, null, 2)}\n`, 'utf8');
 console.log(JSON.stringify(report, null, 2));

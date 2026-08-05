@@ -13,32 +13,40 @@ interface MenuScreenProps {
 const BASE_MENU_SNAPSHOT: GameSnapshot = {
   phase: 'ready',
   elapsedSeconds: 0,
-  ship: { x: 0, y: 0.32, hearts: 3, shieldSeconds: 0, magnetSeconds: 0 },
+  ship: { x: 0, y: 0.32, hearts: 3, shieldSeconds: 0, magnetSeconds: 0, weapon: 'triple-shot', weaponSeconds: 8 },
   entities: [
-    { id: 'menu-4', kind: 'answer', x: -0.58, y: -0.05, z: 0.63, radius: 0.2, color: '#36A8FF', label: '4', correct: false },
-    { id: 'menu-5', kind: 'answer', x: 0, y: 0.03, z: 0.58, radius: 0.2, color: '#73E632', label: '5', correct: true },
-    { id: 'menu-6', kind: 'answer', x: 0.58, y: -0.02, z: 0.66, radius: 0.2, color: '#FF8B20', label: '6', correct: false },
+    { id: 'menu-4', kind: 'enemy', archetype: 'number-drone', x: -0.58, y: -0.05, z: 0.63, radius: 0.2, color: '#36A8FF', label: '4', correct: false, shootable: true, health: 1, maxHealth: 1 },
+    { id: 'menu-5', kind: 'enemy', archetype: 'zigzag-alien', x: 0, y: 0.03, z: 0.58, radius: 0.2, color: '#73E632', label: '5', correct: true, shootable: true, health: 1, maxHealth: 1 },
+    { id: 'menu-6', kind: 'enemy', archetype: 'bomber-alien', x: 0.58, y: -0.02, z: 0.66, radius: 0.2, color: '#FF8B20', label: '6', correct: false, shootable: true, health: 1, maxHealth: 1 },
     { id: 'menu-h1', kind: 'hazard', x: -0.84, y: 0.4, z: 0.4, radius: 0.13, color: '#FF472E' },
     { id: 'menu-h2', kind: 'hazard', x: 0.82, y: 0.47, z: 0.48, radius: 0.13, color: '#8D2CFF' },
-    { id: 'menu-h3', kind: 'hazard', x: 0.7, y: -0.32, z: 0.7, radius: 0.1, color: '#FF472E' },
+    { id: 'menu-power', kind: 'powerUp', powerUp: 'triple-shot', x: 0.7, y: -0.25, z: 0.72, radius: 0.13, color: '#50E8FF', label: '3X' },
   ],
-  challenge: { id: 'menu', kind: 'addition', prompt: 'Solve 2 + 3 = ?', answer: 5, targetCount: 1, progress: 0 },
+  challenge: { id: 'menu', kind: 'addition', prompt: 'Solve 2 + 3', answer: 5, targetCount: 1, progress: 0, mathLevel: 1 },
   score: 3850,
-  stars: 0,
+  stars: 8,
   combo: 3,
   bestCombo: 5,
   shotsFired: 14,
-  challengeNumber: 1,
-  totalChallenges: 6,
+  shotsHit: 12,
+  accuracy: 12 / 14,
+  collisions: 1,
+  challengeNumber: 4,
+  totalChallenges: 10,
   lockTargetId: 'menu-5',
   lockProgress: 0.78,
   lockIsCorrect: true,
   bossHealth: 3,
   bossMaxHealth: 3,
+  bossStage: 1,
   feedback: null,
-  laser: { x: 0, y: 0.03, z: 0.58, seconds: 0.3 },
+  laser: { x: 0, y: 0.03, z: 0.58, seconds: 0.3, beams: 3 },
   shieldCharges: 2,
-  magnetCharges: 3,
+  magnetCharges: 2,
+  waveName: 'Alien ambush',
+  wavePattern: 'alien-ambush',
+  screenShake: 0,
+  reward: null,
 };
 
 export const MenuScreen = ({ progress, onPlay, onParents }: MenuScreenProps) => {
@@ -54,9 +62,7 @@ export const MenuScreen = ({ progress, onPlay, onParents }: MenuScreenProps) => 
       frameRef.current = requestAnimationFrame(tick);
     };
     frameRef.current = requestAnimationFrame(tick);
-    return () => {
-      if (frameRef.current !== null) cancelAnimationFrame(frameRef.current);
-    };
+    return () => { if (frameRef.current !== null) cancelAnimationFrame(frameRef.current); };
   }, []);
 
   const snapshot = useMemo<GameSnapshot>(() => ({
@@ -66,8 +72,9 @@ export const MenuScreen = ({ progress, onPlay, onParents }: MenuScreenProps) => 
       ...BASE_MENU_SNAPSHOT.ship,
       x: Math.sin(previewSeconds * 0.55) * 0.16,
       shieldSeconds: previewSeconds % 9 > 7.2 ? 1 : 0,
-      magnetSeconds: previewSeconds % 11 > 9.6 ? 1 : 0,
+      weaponSeconds: 8,
     },
+    screenShake: previewSeconds % 4 < 0.2 ? 0.2 : 0,
     laser: previewSeconds % 3.8 < 0.55 ? BASE_MENU_SNAPSHOT.laser : null,
   }), [previewSeconds]);
 
@@ -84,151 +91,52 @@ export const MenuScreen = ({ progress, onPlay, onParents }: MenuScreenProps) => 
       </View>
 
       <View style={styles.actionPanel}>
+        <Text style={styles.eyebrow}>ALIEN ASTEROID AMBUSH</Text>
         <Text style={styles.hero}>Ready for launch?</Text>
-        <Text style={styles.subhero}>Tilt to fly, dodge the danger, and blast the right answer.</Text>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Start mission"
-          onPress={onPlay}
-          style={({ pressed }) => [styles.playButton, pressed && styles.pressed]}
-        >
+        <Text style={styles.subhero}>Tilt to fly, dodge asteroid tunnels, collect super weapons, and blast the right answer.</Text>
+        <Pressable accessibilityRole="button" accessibilityLabel="Start mission" onPress={onPlay} style={({ pressed }: { pressed: boolean }) => [styles.playButton, pressed && styles.pressed]}>
           <View style={styles.playTriangle} />
           <Text style={styles.playText}>START MISSION</Text>
         </Pressable>
         <View style={styles.statsRow}>
           <View style={styles.stat}><Text style={styles.statValue}>{progress.highScore.toLocaleString()}</Text><Text style={styles.statLabel}>HIGH SCORE</Text></View>
           <View style={styles.statDivider} />
-          <View style={styles.stat}><Text style={styles.statValue}>{progress.bestStars}</Text><Text style={styles.statLabel}>BEST STARS</Text></View>
+          <View style={styles.stat}><Text style={styles.statValue}>{Math.max(1, progress.highestMathLevel)}</Text><Text style={styles.statLabel}>MATH LEVEL</Text></View>
           <View style={styles.statDivider} />
-          <View style={styles.stat}><Text style={styles.statValue}>{progress.gamesPlayed}</Text><Text style={styles.statLabel}>FLIGHTS</Text></View>
+          <View style={styles.stat}><Text style={styles.statValue}>{progress.unlockedRewards.length}</Text><Text style={styles.statLabel}>REWARDS</Text></View>
         </View>
       </View>
 
       <Pressable accessibilityRole="button" onLongPress={onParents} delayLongPress={850} style={styles.parentButton}>
         <Text style={styles.parentText}>Hold for Parents</Text>
       </Pressable>
-      <Text style={styles.version}>OFFLINE • NO ADS • KID SAFE</Text>
+      <Text style={styles.version}>PROGRESSIVE MATH • OFFLINE • NO ADS • KID SAFE</Text>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
   background: { flex: 1, backgroundColor: '#02031A' },
-  topShade: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: '#02031A1F',
-  },
-  logoPanel: {
-    position: 'absolute',
-    left: 38,
-    top: 40,
-    width: 280,
-    alignItems: 'center',
-    transform: [{ rotate: '-4deg' }],
-  },
-  number: {
-    color: '#FFE34B',
-    fontSize: 48,
-    lineHeight: 50,
-    fontWeight: '900',
-    letterSpacing: 2,
-    textShadowColor: '#FF6A00',
-    textShadowOffset: { width: 0, height: 4 },
-    textShadowRadius: 7,
-    zIndex: 3,
-  },
-  nova: {
-    color: '#6BE8FF',
-    fontSize: 84,
-    lineHeight: 84,
-    fontWeight: '900',
-    letterSpacing: 3,
-    textShadowColor: '#294CFF',
-    textShadowOffset: { width: 1, height: 6 },
-    textShadowRadius: 13,
-    zIndex: 3,
-  },
-  tagline: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '900',
-    letterSpacing: 2.2,
-    marginTop: 8,
-    zIndex: 3,
-  },
-  logoOrbit: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 13,
-    height: 48,
-    borderWidth: 6,
-    borderColor: '#C752FFCC',
-    borderRadius: 100,
-    transform: [{ rotate: '-7deg' }],
-  },
-  actionPanel: {
-    position: 'absolute',
-    right: 42,
-    bottom: 44,
-    width: '38%',
-    minWidth: 430,
-    maxWidth: 610,
-    alignItems: 'center',
-    borderRadius: 34,
-    borderWidth: 3,
-    borderColor: '#39D6FF',
-    backgroundColor: '#06113DEB',
-    paddingHorizontal: 34,
-    paddingVertical: 24,
-  },
+  topShade: { ...StyleSheet.absoluteFillObject, backgroundColor: '#02031A16' },
+  logoPanel: { position: 'absolute', left: 38, top: 35, width: 280, alignItems: 'center', transform: [{ rotate: '-4deg' }] },
+  number: { color: '#FFE34B', fontSize: 48, lineHeight: 50, fontWeight: '900', letterSpacing: 2, textShadowColor: '#FF6A00', textShadowOffset: { width: 0, height: 4 }, textShadowRadius: 7, zIndex: 3 },
+  nova: { color: '#6BE8FF', fontSize: 84, lineHeight: 84, fontWeight: '900', letterSpacing: 3, textShadowColor: '#294CFF', textShadowOffset: { width: 1, height: 6 }, textShadowRadius: 13, zIndex: 3 },
+  tagline: { color: '#FFFFFF', fontSize: 14, fontWeight: '900', letterSpacing: 2.2, marginTop: 8, zIndex: 3 },
+  logoOrbit: { position: 'absolute', left: 0, right: 0, bottom: 13, height: 48, borderWidth: 6, borderColor: '#C752FFCC', borderRadius: 100, transform: [{ rotate: '-7deg' }] },
+  actionPanel: { position: 'absolute', right: 42, bottom: 38, width: '40%', minWidth: 440, maxWidth: 630, alignItems: 'center', borderRadius: 34, borderWidth: 3, borderColor: '#39D6FF', backgroundColor: '#06113DEC', paddingHorizontal: 34, paddingVertical: 22 },
+  eyebrow: { color: '#FFE85A', fontSize: 12, fontWeight: '900', letterSpacing: 1.8, marginBottom: 3 },
   hero: { color: '#FFFFFF', fontSize: 35, lineHeight: 39, fontWeight: '900', textAlign: 'center' },
-  subhero: { color: '#C8D8FF', fontSize: 16, lineHeight: 22, fontWeight: '600', textAlign: 'center', marginTop: 6, maxWidth: 440 },
-  playButton: {
-    minWidth: 300,
-    height: 72,
-    marginTop: 20,
-    borderRadius: 36,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#FF552D',
-    borderWidth: 4,
-    borderColor: '#FFD64C',
-    shadowColor: '#FF762B',
-    shadowOpacity: 0.85,
-    shadowRadius: 14,
-    shadowOffset: { width: 0, height: 8 },
-  },
+  subhero: { color: '#C8D8FF', fontSize: 16, lineHeight: 22, fontWeight: '600', textAlign: 'center', marginTop: 6, maxWidth: 460 },
+  playButton: { minWidth: 300, height: 72, marginTop: 18, borderRadius: 36, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#FF552D', borderWidth: 4, borderColor: '#FFD64C', shadowColor: '#FF762B', shadowOpacity: 0.85, shadowRadius: 14, shadowOffset: { width: 0, height: 8 } },
   pressed: { transform: [{ scale: 0.97 }] },
-  playTriangle: {
-    width: 0,
-    height: 0,
-    borderTopWidth: 13,
-    borderBottomWidth: 13,
-    borderLeftWidth: 22,
-    borderTopColor: 'transparent',
-    borderBottomColor: 'transparent',
-    borderLeftColor: '#FFFFFF',
-    marginRight: 15,
-  },
+  playTriangle: { width: 0, height: 0, borderTopWidth: 13, borderBottomWidth: 13, borderLeftWidth: 22, borderTopColor: 'transparent', borderBottomColor: 'transparent', borderLeftColor: '#FFFFFF', marginRight: 15 },
   playText: { color: '#FFFFFF', fontSize: 22, lineHeight: 25, fontWeight: '900', letterSpacing: 1.2 },
-  statsRow: { flexDirection: 'row', alignItems: 'center', marginTop: 18 },
+  statsRow: { flexDirection: 'row', alignItems: 'center', marginTop: 16 },
   stat: { minWidth: 104, alignItems: 'center' },
   statValue: { color: '#FFE153', fontSize: 20, fontWeight: '900' },
   statLabel: { color: '#A7B9E9', fontSize: 10, fontWeight: '900', letterSpacing: 1, marginTop: 2 },
   statDivider: { width: 1, height: 32, backgroundColor: '#52679B', marginHorizontal: 8 },
-  parentButton: {
-    position: 'absolute',
-    left: 28,
-    bottom: 26,
-    borderRadius: 17,
-    borderWidth: 2,
-    borderColor: '#6574A8',
-    backgroundColor: '#080E32CC',
-    paddingHorizontal: 18,
-    paddingVertical: 10,
-  },
+  parentButton: { position: 'absolute', left: 28, bottom: 26, borderRadius: 17, borderWidth: 2, borderColor: '#6574A8', backgroundColor: '#080E32CC', paddingHorizontal: 18, paddingVertical: 10 },
   parentText: { color: '#FFFFFF', fontSize: 13, fontWeight: '800' },
   version: { position: 'absolute', right: 30, bottom: 15, color: '#8293C2', fontSize: 9, fontWeight: '900', letterSpacing: 1 },
 });
