@@ -10,8 +10,10 @@ appId: com.guy16510.numbernova
 - waitForAnimationToEnd:
     timeout: 1000
 - takeScreenshot: artifacts/render/nav-menu-b
-- longPressOn:
-    id: "parent-access"
+- tapOn: "PARENTS"
+- assertVisible: "GROWN-UPS ONLY"
+- assertVisible: "What is 7 × 8?"
+- tapOn: "Answer 56"
 - assertVisible: "Parent dashboard"
 - assertVisible: "DONE"
 - takeScreenshot: artifacts/render/nav-parents-a
