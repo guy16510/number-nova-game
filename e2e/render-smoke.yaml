@@ -23,7 +23,7 @@ appId: com.guy16510.numbernova
     text: "Use touch controls instead"
     waitToSettleTimeoutMs: 1000
 - assertVisible: "BUBBLE SHIELD"
-- assertVisible: "FIRE"
+- assertVisible: "Fire lasers"
 - assertVisible: "ROCKET BOOST"
 - takeScreenshot: artifacts/render/gameplay-start-a
 - waitForAnimationToEnd:
@@ -36,7 +36,7 @@ appId: com.guy16510.numbernova
     waitToSettleTimeoutMs: 1000
 - takeScreenshot: artifacts/render/gameplay-steering-a
 - tapOn:
-    text: "FIRE"
+    text: "Fire lasers"
     waitToSettleTimeoutMs: 100
 - takeScreenshot: artifacts/render/gameplay-laser
 - tapOn:
