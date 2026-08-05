@@ -28,20 +28,20 @@ interface MutableEntity {
   z: number;
   radius: number;
   color: string;
-  label?: string;
-  correct?: boolean;
-  archetype?: WorldEntity['archetype'];
-  powerUp?: PowerUpKind;
-  health?: number;
-  maxHealth?: number;
-  ttl?: number;
-  targetId?: string;
-  vx?: number;
-  vy?: number;
-  vz?: number;
-  shootable?: boolean;
-  warning?: boolean;
-  cooldown?: number;
+  label?: string | undefined;
+  correct?: boolean | undefined;
+  archetype?: WorldEntity['archetype'] | undefined;
+  powerUp?: PowerUpKind | undefined;
+  health?: number | undefined;
+  maxHealth?: number | undefined;
+  ttl?: number | undefined;
+  targetId?: string | undefined;
+  vx?: number | undefined;
+  vy?: number | undefined;
+  vz?: number | undefined;
+  shootable?: boolean | undefined;
+  warning?: boolean | undefined;
+  cooldown?: number | undefined;
 }
 
 export interface GameEngineOptions {

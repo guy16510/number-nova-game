@@ -69,26 +69,26 @@ export interface WorldEntity {
   readonly z: number;
   readonly radius: number;
   readonly color: string;
-  readonly label?: string;
-  readonly correct?: boolean;
-  readonly archetype?: EnemyArchetype;
-  readonly powerUp?: PowerUpKind;
-  readonly health?: number;
-  readonly maxHealth?: number;
-  readonly ttl?: number;
-  readonly targetId?: string;
-  readonly vx?: number;
-  readonly vy?: number;
-  readonly vz?: number;
-  readonly shootable?: boolean;
-  readonly warning?: boolean;
+  readonly label?: string | undefined;
+  readonly correct?: boolean | undefined;
+  readonly archetype?: EnemyArchetype | undefined;
+  readonly powerUp?: PowerUpKind | undefined;
+  readonly health?: number | undefined;
+  readonly maxHealth?: number | undefined;
+  readonly ttl?: number | undefined;
+  readonly targetId?: string | undefined;
+  readonly vx?: number | undefined;
+  readonly vy?: number | undefined;
+  readonly vz?: number | undefined;
+  readonly shootable?: boolean | undefined;
+  readonly warning?: boolean | undefined;
 }
 
 export interface ActiveChallenge {
   readonly id: string;
   readonly kind: ChallengeKind;
   readonly prompt: string;
-  readonly answer?: number;
+  readonly answer?: number | undefined;
   readonly targetCount: number;
   readonly progress: number;
   readonly mathLevel: number;
@@ -145,7 +145,7 @@ export interface ChallengeDefinition {
   readonly id: string;
   readonly kind: ChallengeKind;
   readonly prompt: string;
-  readonly answer?: number;
+  readonly answer?: number | undefined;
   readonly targetCount: number;
   readonly options: readonly number[];
   readonly mathLevel: number;
@@ -174,18 +174,18 @@ export interface EntityBlueprint {
   readonly z: number;
   readonly radius: number;
   readonly color: string;
-  readonly label?: string;
-  readonly correct?: boolean;
-  readonly archetype?: EnemyArchetype;
-  readonly powerUp?: PowerUpKind;
-  readonly health?: number;
-  readonly maxHealth?: number;
-  readonly ttl?: number;
-  readonly vx?: number;
-  readonly vy?: number;
-  readonly vz?: number;
-  readonly shootable?: boolean;
-  readonly warning?: boolean;
+  readonly label?: string | undefined;
+  readonly correct?: boolean | undefined;
+  readonly archetype?: EnemyArchetype | undefined;
+  readonly powerUp?: PowerUpKind | undefined;
+  readonly health?: number | undefined;
+  readonly maxHealth?: number | undefined;
+  readonly ttl?: number | undefined;
+  readonly vx?: number | undefined;
+  readonly vy?: number | undefined;
+  readonly vz?: number | undefined;
+  readonly shootable?: boolean | undefined;
+  readonly warning?: boolean | undefined;
 }
 
 export interface WavePlan {

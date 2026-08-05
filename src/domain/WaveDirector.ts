@@ -138,7 +138,7 @@ export class WaveDirector implements WaveDirectorPort {
 
   private archetypeFor(index: number): EnemyArchetype {
     if (index < 2) return 'number-drone';
-    return (['zigzag-alien', 'bomber-alien', 'shield-ship', 'number-drone'] as const)[(index - 2) % 4];
+    return (['zigzag-alien', 'bomber-alien', 'shield-ship', 'number-drone'] as const)[(index - 2) % 4] ?? 'number-drone';
   }
 
   private hazards(context: WaveContext, pattern: WavePattern): EntityBlueprint[] {
