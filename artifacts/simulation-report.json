@@ -1,0 +1,40 @@
+{
+  "generatedAt": "2026-08-04T18:20:13.076Z",
+  "config": {
+    "seeds": 300,
+    "framesPerSeed": 900,
+    "solverSeeds": 75,
+    "reportPath": "artifacts/simulation-report.json"
+  },
+  "stress": {
+    "seeds": 300,
+    "requestedFramesPerSeed": 900,
+    "simulatedFrames": 264101,
+    "pauseResumeChecks": 300,
+    "maximumEntities": 10,
+    "minimumHearts": 0,
+    "maximumScore": 750,
+    "maximumStars": 10,
+    "challengeKindsSeen": [
+      "addition",
+      "collect",
+      "number"
+    ],
+    "outcomes": {
+      "ready": 0,
+      "playing": 241,
+      "paused": 0,
+      "boss": 0,
+      "complete": 0,
+      "failed": 59
+    }
+  },
+  "solver": {
+    "seeds": 75,
+    "completed": 75,
+    "failed": 0,
+    "timedOut": 0,
+    "completionRate": 1,
+    "maximumElapsedSeconds": 12.87
+  }
+}

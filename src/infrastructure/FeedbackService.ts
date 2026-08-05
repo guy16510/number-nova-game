@@ -22,6 +22,7 @@ export interface FeedbackPort {
 }
 
 export class ExpoFeedbackService implements FeedbackPort {
+  private static readonly audioEnabled = false;
   private readonly audio = new GameAudioDirector(new NumberNovaAudioCatalog(), new ExpoSoundPoolFactory());
   private readonly ready: Promise<void>;
   private stopped = false;
@@ -31,6 +32,7 @@ export class ExpoFeedbackService implements FeedbackPort {
   }
 
   public speak(text: string): void {
+    if (!ExpoFeedbackService.audioEnabled) return;
     Speech.stop();
     Speech.speak(text, { language: 'en-US', rate: 0.9, pitch: 1.08, volume: 0.88 });
   }
@@ -93,6 +95,7 @@ export class ExpoFeedbackService implements FeedbackPort {
   }
 
   private async prepareAudio(): Promise<void> {
+    if (!ExpoFeedbackService.audioEnabled) return;
     try {
       await Audio.setAudioModeAsync({
         playsInSilentModeIOS: true,
@@ -106,6 +109,7 @@ export class ExpoFeedbackService implements FeedbackPort {
   }
 
   private async withAudio(action: () => Promise<void>): Promise<void> {
+    if (!ExpoFeedbackService.audioEnabled) return;
     try {
       await this.ready;
       if (!this.stopped) await action();
