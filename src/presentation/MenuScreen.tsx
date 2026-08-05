@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import type { GameSnapshot } from '../domain/types';
 import type { PlayerProgress } from '../infrastructure/ProgressRepository';
@@ -34,7 +34,6 @@ export const MenuScreen = ({ progress, onPlay, onHangar, onParents }: MenuScreen
   const [previewSeconds, setPreviewSeconds] = useState(0);
   const frameRef = useRef<number | null>(null);
   const startRef = useRef<number | null>(null);
-  const parentHoldRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     const tick = (timestamp: number) => {
@@ -44,23 +43,7 @@ export const MenuScreen = ({ progress, onPlay, onHangar, onParents }: MenuScreen
       frameRef.current = requestAnimationFrame(tick);
     };
     frameRef.current = requestAnimationFrame(tick);
-    return () => {
-      if (frameRef.current !== null) cancelAnimationFrame(frameRef.current);
-      if (parentHoldRef.current !== null) clearTimeout(parentHoldRef.current);
-    };
-  }, []);
-
-  const beginParentHold = useCallback(() => {
-    if (parentHoldRef.current !== null) clearTimeout(parentHoldRef.current);
-    parentHoldRef.current = setTimeout(() => {
-      parentHoldRef.current = null;
-      onParents();
-    }, 300);
-  }, [onParents]);
-
-  const cancelParentHold = useCallback(() => {
-    if (parentHoldRef.current !== null) clearTimeout(parentHoldRef.current);
-    parentHoldRef.current = null;
+    return () => { if (frameRef.current !== null) cancelAnimationFrame(frameRef.current); };
   }, []);
 
   const snapshot = useMemo<GameSnapshot>(() => ({
@@ -92,17 +75,8 @@ export const MenuScreen = ({ progress, onPlay, onHangar, onParents }: MenuScreen
           <View style={styles.stat}><Text style={styles.statValue}>{progress.unlockedRewards.length}</Text><Text style={styles.statLabel}>REWARDS</Text></View>
         </View>
       </View>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="Hold for Parents"
-        accessibilityHint="Hold to open the parent dashboard"
-        testID="parent-access"
-        hitSlop={12}
-        onPressIn={beginParentHold}
-        onPressOut={cancelParentHold}
-        style={styles.parentButton}
-      >
-        <Text pointerEvents="none" style={styles.parentText}>Hold for Parents</Text>
+      <Pressable accessibilityRole="button" accessibilityLabel="Parents" onPress={onParents} style={styles.parentButton}>
+        <Text style={styles.parentText}>PARENTS</Text>
       </Pressable>
       <Text style={styles.version}>MASTERY LEARNING • OFFLINE • NO ADS • KID SAFE</Text>
     </View>
@@ -124,6 +98,6 @@ const styles = StyleSheet.create({
   playText: { color: '#FFFFFF', fontSize: 21, fontWeight: '900', letterSpacing: 1.1 },
   hangarButton: { marginTop: 9, borderRadius: 16, borderWidth: 1, borderColor: '#6E83BC', paddingHorizontal: 22, paddingVertical: 9 }, hangarText: { color: '#BFE9FF', fontSize: 12, fontWeight: '900', letterSpacing: 0.8 },
   statsRow: { flexDirection: 'row', alignItems: 'center', marginTop: 13 }, stat: { minWidth: 104, alignItems: 'center' }, statValue: { color: '#FFE153', fontSize: 20, fontWeight: '900' }, statLabel: { color: '#A7B9E9', fontSize: 10, fontWeight: '900', letterSpacing: 1 }, statDivider: { width: 1, height: 32, backgroundColor: '#52679B', marginHorizontal: 8 },
-  parentButton: { position: 'absolute', left: 28, bottom: 26, zIndex: 10, borderRadius: 17, borderWidth: 2, borderColor: '#6574A8', backgroundColor: '#080E32CC', paddingHorizontal: 18, paddingVertical: 10 }, parentText: { color: '#FFFFFF', fontSize: 13, fontWeight: '800' },
+  parentButton: { position: 'absolute', left: 28, bottom: 26, zIndex: 10, borderRadius: 17, borderWidth: 2, borderColor: '#6574A8', backgroundColor: '#080E32CC', paddingHorizontal: 18, paddingVertical: 10 }, parentText: { color: '#FFFFFF', fontSize: 13, fontWeight: '800', letterSpacing: 0.8 },
   version: { position: 'absolute', right: 30, bottom: 15, color: '#8293C2', fontSize: 9, fontWeight: '900', letterSpacing: 1 },
 });
