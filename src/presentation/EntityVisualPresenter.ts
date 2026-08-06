@@ -36,6 +36,8 @@ export interface RenderBudgetPolicy {
   select(entities: readonly WorldEntity[], lockTargetId: string | null): readonly WorldEntity[];
 }
 
+const WARM_HAZARD_COLOR = '#F08A3C';
+
 const shapeForEnemy = (archetype: EnemyArchetype | undefined): VisualShape => {
   switch (archetype) {
     case 'zigzag-alien': return 'zigzag';
@@ -87,7 +89,7 @@ export class DefaultEntityVisualPresenter implements EntityVisualPresenter {
     return {
       id: entity.id,
       shape: shapeFor(entity),
-      color: entity.color,
+      color: entity.kind === 'hazard' ? WARM_HAZARD_COLOR : entity.color,
       label: entity.label ?? null,
       healthRatio: hasHealth ? Math.max(0, Math.min(1, entity.health! / entity.maxHealth!)) : null,
       warning: entity.warning === true,
