@@ -1,5 +1,11 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import Animated, {
+  Easing,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated';
 import type { GameSnapshot, WorldEntity } from '../domain/types';
 
 interface Props { readonly snapshot: GameSnapshot }
@@ -12,6 +18,8 @@ interface ProjectedEntity {
 }
 
 const STAR_COUNT = 28;
+const INTERPOLATION_MS = 55;
+const motionConfig = { duration: INTERPOLATION_MS, easing: Easing.linear } as const;
 
 const project = (entity: WorldEntity, width: number, height: number): ProjectedEntity => {
   const depth = Math.max(0, Math.min(1.25, 1 - entity.z));
@@ -54,20 +62,40 @@ const StarField = React.memo(StarFieldView);
 
 const EntityView = ({ item, locked }: { readonly item: ProjectedEntity; readonly locked: boolean }) => {
   const { entity, x, y, size } = item;
+  const translateX = useSharedValue(x - size / 2);
+  const translateY = useSharedValue(y - size / 2);
+  const scale = useSharedValue(1);
+
+  useEffect(() => {
+    translateX.value = withTiming(x - size / 2, motionConfig);
+    translateY.value = withTiming(y - size / 2, motionConfig);
+  }, [size, translateX, translateY, x, y]);
+
+  useEffect(() => {
+    scale.value = withTiming(locked ? 1.06 : 1, { duration: 90 });
+  }, [locked, scale]);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [
+      { translateX: translateX.value },
+      { translateY: translateY.value },
+      { scale: scale.value },
+    ],
+  }));
+
   return (
-    <View style={[styles.entity, {
+    <Animated.View style={[styles.entity, {
       width: size,
       height: size,
       borderRadius: size / 2,
       borderColor: locked ? '#F4FF64' : `${entity.color}AA`,
       borderWidth: locked ? 4 : 2,
       backgroundColor: `${entity.color}38`,
-      transform: [{ translateX: x - size / 2 }, { translateY: y - size / 2 }],
-    }]}>
+    }, animatedStyle]}>
       <Text adjustsFontSizeToFit numberOfLines={1} style={[styles.glyph, { color: entity.color, fontSize: Math.max(12, size * 0.45) }]}>
         {glyphFor(entity)}
       </Text>
-    </View>
+    </Animated.View>
   );
 };
 
@@ -84,6 +112,38 @@ const Entity = React.memo(EntityView, (previous, next) => {
     && a.size === b.size;
 });
 
+const ShipView = ({ x, y }: { readonly x: number; readonly y: number }) => {
+  const translateX = useSharedValue(x);
+  const translateY = useSharedValue(y);
+
+  useEffect(() => {
+    translateX.value = withTiming(x, motionConfig);
+    translateY.value = withTiming(y, motionConfig);
+  }, [translateX, translateY, x, y]);
+
+  const glowStyle = useAnimatedStyle(() => ({
+    transform: [
+      { translateX: translateX.value - 43 },
+      { translateY: translateY.value - 43 },
+    ],
+  }));
+  const shipStyle = useAnimatedStyle(() => ({
+    transform: [
+      { translateX: translateX.value - 25 },
+      { translateY: translateY.value - 32 },
+    ],
+  }));
+
+  return (
+    <>
+      <Animated.View style={[styles.shipGlow, glowStyle]} />
+      <Animated.Text style={[styles.ship, shipStyle]}>▲</Animated.Text>
+    </>
+  );
+};
+
+const Ship = React.memo(ShipView);
+
 export const GameCanvasLite = React.memo(({ snapshot }: Props) => {
   const { width, height } = useWindowDimensions();
   const projected = useMemo(
@@ -99,8 +159,7 @@ export const GameCanvasLite = React.memo(({ snapshot }: Props) => {
       {projected.map((item) => (
         <Entity key={item.entity.id} item={item} locked={snapshot.lockTargetId === item.entity.id} />
       ))}
-      <View style={[styles.shipGlow, { transform: [{ translateX: shipX - 43 }, { translateY: shipY - 43 }] }]} />
-      <Text style={[styles.ship, { transform: [{ translateX: shipX - 25 }, { translateY: shipY - 32 }] }]}>▲</Text>
+      <Ship x={shipX} y={shipY} />
       {snapshot.laser ? (
         <View style={[styles.laser, {
           height: Math.max(10, shipY - height * 0.18),
