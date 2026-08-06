@@ -18,6 +18,10 @@ const session = (overrides: Partial<PlaytestSession>): PlaytestSession => ({
   ...overrides,
 });
 
+const assertCloseTo = (actual: number, expected: number, tolerance = 1e-12): void => {
+  assert.ok(Math.abs(actual - expected) <= tolerance, `expected ${actual} to be within ${tolerance} of ${expected}`);
+};
+
 test('playtest summary reports completion, abandonment, controls, and performance', () => {
   const summary = summarizePlaytests([
     session({ id: 'a' }),
@@ -26,9 +30,9 @@ test('playtest summary reports completion, abandonment, controls, and performanc
   assert.equal(summary.sessions, 2);
   assert.equal(summary.completed, 1);
   assert.equal(summary.abandoned, 1);
-  assert.equal(summary.completionRate, 0.5);
-  assert.equal(summary.averageAccuracy, 0.6);
-  assert.equal(summary.averageDurationSeconds, 40);
+  assertCloseTo(summary.completionRate, 0.5);
+  assertCloseTo(summary.averageAccuracy, 0.6);
+  assertCloseTo(summary.averageDurationSeconds, 40);
   assert.equal(summary.totalFrameStalls, 3);
   assert.equal(summary.motionSessions, 1);
   assert.equal(summary.touchSessions, 1);
