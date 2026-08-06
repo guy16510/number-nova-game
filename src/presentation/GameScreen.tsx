@@ -8,7 +8,7 @@ import { MissionChallengeFactory, MissionDifficultyDirector } from '../domain/Mi
 import type { GameSnapshot, SteeringInput } from '../domain/types';
 import { ExpoFeedbackService, type AudioMode } from '../infrastructure/FeedbackService';
 import { ExpoMotionInput } from '../infrastructure/ExpoMotionInput';
-import { GameCanvas } from './GameCanvas';
+import { GameCanvasLite } from './GameCanvasLite';
 import { GameHud } from './GameHud';
 import { LearningHintOverlay } from './LearningHintOverlay';
 import { TouchSteeringLayer } from './TouchSteeringLayer';
@@ -24,8 +24,8 @@ interface GameScreenProps {
 type ControlMode = 'motion' | 'touch';
 
 const PHYSICS_STEP_SECONDS = 1 / 60;
-const SNAPSHOT_INTERVAL_MS = 1000 / 30;
-const MAX_PHYSICS_STEPS_PER_FRAME = 4;
+const SNAPSHOT_INTERVAL_MS = 1000 / 20;
+const MAX_PHYSICS_STEPS_PER_FRAME = 3;
 const explosionCount = (snapshot: GameSnapshot): number => snapshot.entities.filter((entity) => entity.kind === 'explosion').length;
 
 export const GameScreen = ({ seed, mission, companionName, onExit, onFinish }: GameScreenProps) => {
@@ -64,6 +64,7 @@ export const GameScreen = ({ seed, mission, companionName, onExit, onFinish }: G
       motion.stop();
       feedback.stop();
       if (frameRef.current !== null) cancelAnimationFrame(frameRef.current);
+      frameRef.current = null;
     };
   }, []);
 
@@ -140,10 +141,12 @@ export const GameScreen = ({ seed, mission, companionName, onExit, onFinish }: G
   }, []);
 
   useEffect(() => {
-    if (!started) return;
+    if (!started || showPause) return;
+    let cancelled = false;
     const tick = (timestamp: number) => {
+      if (cancelled) return;
       const last = lastFrameRef.current ?? timestamp;
-      const frameSeconds = Math.min(0.1, Math.max(0, (timestamp - last) / 1000));
+      const frameSeconds = Math.min(0.075, Math.max(0, (timestamp - last) / 1000));
       lastFrameRef.current = timestamp;
       accumulatorRef.current += frameSeconds;
 
@@ -153,7 +156,7 @@ export const GameScreen = ({ seed, mission, companionName, onExit, onFinish }: G
         accumulatorRef.current -= PHYSICS_STEP_SECONDS;
         physicsSteps += 1;
       }
-      if (physicsSteps === MAX_PHYSICS_STEPS_PER_FRAME) accumulatorRef.current = Math.min(accumulatorRef.current, PHYSICS_STEP_SECONDS);
+      if (physicsSteps === MAX_PHYSICS_STEPS_PER_FRAME) accumulatorRef.current = 0;
 
       if (timestamp - lastPublishRef.current >= SNAPSHOT_INTERVAL_MS) {
         const next = engineRef.current.snapshot();
@@ -164,8 +167,12 @@ export const GameScreen = ({ seed, mission, companionName, onExit, onFinish }: G
       frameRef.current = requestAnimationFrame(tick);
     };
     frameRef.current = requestAnimationFrame(tick);
-    return () => { if (frameRef.current !== null) cancelAnimationFrame(frameRef.current); };
-  }, [publishFeedback, started]);
+    return () => {
+      cancelled = true;
+      if (frameRef.current !== null) cancelAnimationFrame(frameRef.current);
+      frameRef.current = null;
+    };
+  }, [publishFeedback, showPause, started]);
 
   useEffect(() => {
     if (finishSentRef.current || (snapshot.phase !== 'complete' && snapshot.phase !== 'failed')) return;
@@ -251,7 +258,7 @@ export const GameScreen = ({ seed, mission, companionName, onExit, onFinish }: G
 
   return (
     <View style={styles.container}>
-      <GameCanvas snapshot={snapshot} />
+      <GameCanvasLite snapshot={snapshot} />
       <TouchSteeringLayer enabled={started && controlMode === 'touch' && !showPause} onInput={(input) => { inputRef.current = input; }} />
       {started ? <GameHud snapshot={snapshot} onPause={handlePause} onShield={handleShield} onMagnet={handleMagnet} onFire={handleFire} /> : null}
       {started && !showPause ? <LearningHintOverlay hint={learningHint} companionName={companionName} /> : null}
