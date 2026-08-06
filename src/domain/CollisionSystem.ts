@@ -5,6 +5,11 @@ export interface CollisionPort {
   collides(first: WorldEntity, second: WorldEntity): boolean;
 }
 
+export type CollisionClock = () => number;
+
+const DEFAULT_DAMAGE_COOLDOWN_MS = 900;
+const DAMAGEABLE_KINDS = new Set<WorldEntity['kind']>(['hazard', 'enemy', 'enemyProjectile']);
+
 const distanceSquared = (ax: number, ay: number, bx: number, by: number): number => {
   const dx = ax - bx;
   const dy = ay - by;
@@ -12,10 +17,23 @@ const distanceSquared = (ax: number, ay: number, bx: number, by: number): number
 };
 
 export class CollisionSystem implements CollisionPort {
+  private damageBlockedUntil = 0;
+
+  public constructor(
+    private readonly clock: CollisionClock = Date.now,
+    private readonly damageCooldownMs = DEFAULT_DAMAGE_COOLDOWN_MS,
+  ) {}
+
   public collidesWithShip(entity: WorldEntity, ship: Pick<ShipState, 'x' | 'y'>): boolean {
     if (entity.z > 0.11 || entity.z < -0.1) return false;
     const radius = entity.kind === 'star' || entity.kind === 'powerUp' ? 0.17 : 0.135;
-    return distanceSquared(entity.x, entity.y, ship.x, ship.y) <= radius;
+    const collided = distanceSquared(entity.x, entity.y, ship.x, ship.y) <= radius;
+    if (!collided || !DAMAGEABLE_KINDS.has(entity.kind)) return collided;
+
+    const now = this.clock();
+    if (now < this.damageBlockedUntil) return false;
+    this.damageBlockedUntil = now + this.damageCooldownMs;
+    return true;
   }
 
   public collides(first: WorldEntity, second: WorldEntity): boolean {
