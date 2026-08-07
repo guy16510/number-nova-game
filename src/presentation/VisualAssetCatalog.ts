@@ -8,7 +8,7 @@ export interface VisualAssetDefinition {
 }
 
 const SHIP_ASSET: VisualAssetDefinition = { fill: '#EAF8FF', stroke: '#54DFFF', glow: '#39D6FF', detail: '#7657FF' };
-const ASTEROID_ASSET: VisualAssetDefinition = { fill: '#7B4630', stroke: '#F08A3C', glow: '#FFB15C', detail: '#41261F' };
+const ASTEROID_ASSET: VisualAssetDefinition = { fill: '#D96F32', stroke: '#F08A3C', glow: '#FFB15C', detail: '#5A2B1F' };
 const DRONE_ASSET: VisualAssetDefinition = { fill: '#241A5C', stroke: '#7DE7FF', glow: '#30D9FF', detail: '#FFFFFF' };
 const ZIGZAG_ASSET: VisualAssetDefinition = { fill: '#34205D', stroke: '#B98CFF', glow: '#8C6AFF', detail: '#FFE66A' };
 const BOMBER_ASSET: VisualAssetDefinition = { fill: '#5A1834', stroke: '#FF6F91', glow: '#FF406A', detail: '#FFD0D9' };
