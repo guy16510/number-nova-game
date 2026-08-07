@@ -1,4 +1,5 @@
 import type { EnemyArchetype, EntityKind, WorldEntity } from '../domain/types';
+import { visualAssetFor } from './VisualAssetCatalog';
 
 export type VisualShape =
   | 'asteroid'
@@ -20,6 +21,9 @@ export interface EntityVisualModel {
   readonly id: string;
   readonly shape: VisualShape;
   readonly color: string;
+  readonly fillColor: string;
+  readonly glowColor: string;
+  readonly detailColor: string;
   readonly label: string | null;
   readonly healthRatio: number | null;
   readonly warning: boolean;
@@ -35,8 +39,6 @@ export interface EntityVisualPresenter {
 export interface RenderBudgetPolicy {
   select(entities: readonly WorldEntity[], lockTargetId: string | null): readonly WorldEntity[];
 }
-
-const WARM_HAZARD_COLOR = '#F08A3C';
 
 const shapeForEnemy = (archetype: EnemyArchetype | undefined): VisualShape => {
   switch (archetype) {
@@ -86,10 +88,14 @@ export class DefaultEntityVisualPresenter implements EntityVisualPresenter {
   present(entity: WorldEntity, lockTargetId: string | null): EntityVisualModel {
     const locked = lockTargetId === entity.id;
     const hasHealth = typeof entity.health === 'number' && typeof entity.maxHealth === 'number' && entity.maxHealth > 0;
+    const asset = visualAssetFor(entity.kind, entity.archetype);
     return {
       id: entity.id,
       shape: shapeFor(entity),
-      color: entity.kind === 'hazard' ? WARM_HAZARD_COLOR : entity.color,
+      color: asset.stroke,
+      fillColor: asset.fill,
+      glowColor: asset.glow,
+      detailColor: asset.detail,
       label: entity.label ?? null,
       healthRatio: hasHealth ? Math.max(0, Math.min(1, entity.health! / entity.maxHealth!)) : null,
       warning: entity.warning === true,

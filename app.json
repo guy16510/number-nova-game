@@ -2,16 +2,23 @@
   "expo": {
     "name": "Number Nova",
     "slug": "number-nova",
-    "version": "0.1.0",
+    "version": "0.2.0",
     "orientation": "landscape",
     "userInterfaceStyle": "dark",
     "newArchEnabled": true,
     "jsEngine": "hermes",
     "scheme": "numbernova",
+    "icon": "./assets/icon.png",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#02031A"
+    },
     "ios": {
       "supportsTablet": true,
       "requireFullScreen": true,
       "bundleIdentifier": "com.guy16510.numbernova",
+      "buildNumber": "1",
       "config": {
         "usesNonExemptEncryption": false
       },
@@ -22,6 +29,11 @@
     },
     "android": {
       "package": "com.guy16510.numbernova",
+      "versionCode": 1,
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#02031A"
+      },
       "permissions": [
         "android.permission.HIGH_SAMPLING_RATE_SENSORS",
         "android.permission.VIBRATE"
@@ -44,6 +56,15 @@
         "expo-screen-orientation",
         {
           "initialOrientation": "LANDSCAPE_LEFT"
+        }
+      ],
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash.png",
+          "imageWidth": 800,
+          "resizeMode": "contain",
+          "backgroundColor": "#02031A"
         }
       ]
     ]
